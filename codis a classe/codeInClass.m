@@ -113,4 +113,4 @@ q_aoa = zeros(N_dof,1);
 q_aoa(I_free) = K_free\(B_free*lift);
 
 
-%plots FOTO AL MOBIL
+%plots ??

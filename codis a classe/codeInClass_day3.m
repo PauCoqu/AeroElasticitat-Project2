@@ -79,7 +79,7 @@ end
 k=0; % Steady case
 M_inf = 0; % Assume incompressibility conditions
 
-AIC = dlmAIC(x_p,y_p,k,M_inf,c/2);
+AIC = buildAIC(x_p,y_p,k,M_inf,c/2);
 
 
 % Assembly of the structural matrices
@@ -185,7 +185,6 @@ L_0 = sum(S(1:3:end,:)*delta_p_0,1);
 
 
 %Plot
-% FOTO AL MOBIL
 
 
 

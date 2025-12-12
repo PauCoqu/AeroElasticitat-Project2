@@ -329,4 +329,12 @@ metrics.sigma_max = sigma_max;
 metrics.C_sigma = C_sigma;
 metrics.Csigma_over_mu = Csigma_over_mu;
 
+metrics.span     = span;
+metrics.modes    = modes;
+metrics.c_root   = c_root;
+metrics.x_panel  = x_panel;
+metrics.y_panel  = y_panel;
+metrics.material = material;
+
+
 end
