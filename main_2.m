@@ -31,17 +31,3 @@ Nx = 10;
 Ny = 21;
 
 metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nspan, Nx, Ny, alpha_deg, U_inf);
-
-%% 
-
-x_panel = metrics.x_panel;
-y_panel = metrics.y_panel;
-c_root  = metrics.c_root;
-
-M = 0;   % incompressible
-k = 0;   % quasi-steady
-
-AIC0 = buildAIC(x_panel, y_panel, c_root, M, k);
-
-fprintf("AIC0 size = %dx%d\n", size(AIC0,1), size(AIC0,2));
-

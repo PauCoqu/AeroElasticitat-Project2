@@ -10,13 +10,40 @@ E  = material.YoungModulus;
 nu = material.Poisson;          
 G  = E/(2*(1+nu));              
 
-%% Model 1D de viga en y:
-   %────*────*────*────*────*────* -> y
-   %y=0 y1  y2   y3   ...       y = b/2
+%% Ara volem un model 2D de viga:
+   %*────*────*────*────*────*────* 
+   %|    |    |    |    |    |    | -> y
+   %*────*────*────*────*────*────*  
+   %y=0 y1   y2    y3   ...      y = b/2
    %* = node estructural
+ 
+x = linspace(0, c, Nx+1);
+y = linspace(0, b_pl, Ny+1);
 
-Ne   = numel(y) - 1; % nombre d'elements
-Nn   = numel(y); % nombre de nodes
+%Nodes
+nodes = zeros((Nx+1)*(Ny+1),2); % nodes: ((Nx+1)*(Ny+1)) * 2  -> [x,y]
+for i = 1:Nx_s+1
+    for j = 1:Ny+1
+        k = (Ny+1)*(i-1) + j;
+        nodes(k,:) = [x(i), y(j)];
+    end
+end
+
+%Elements
+elem = zeros(Nx*Ny,4); % elem : (Nx*Ny) * 4
+for i = 1:Nx_s
+    for j = 1:Ny_s
+        e = Ny*(i-1) + j;
+        n1 = (Ny+1)*(i-1) + j;
+        n2 = (Ny+1)*i     + j;
+        n3 = (Ny+1)*i     + j+1;
+        n4 = (Ny+1)*(i-1) + j+1;
+        elem(e,:) = [n1 n2 n3 n4];
+    end
+end
+%% 
+%M'HE QUEDAT AQUI
+%%%%%%%%%%%%%%
 nd   = 3; % DOFs per node: [eta (desplaç.), zeta (rot.), theta (torsió)]
 ndof = nd * Nn; % nombre total de graus de llibertat
 

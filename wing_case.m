@@ -36,15 +36,12 @@ c_y = c_root * (1 - (1 - lambda) * y/b); %corda cada perfil
 %Calcul de les propietats al llarg de l'envergadura [span]
 [span] = spanwise_distributions(section, material, c_y, c_root, y, b, S, AR, lambda);
 
-%% STEP 3 - Euler-Bernoulli beam 
+%% STEP 3 - Kirchoff_love_plate 
 
 % AQUEST PAS NOMÉS CAL EXECUTAR-LO UNA VEGADA!!!
-% En la següent funció (beamElementSymbolic):
-%S'obtenen les matrius: M_e (masa) ,K_e (rigidesa),B_e (cargues aerodinamiques)
-% MATLAB genera les funcions beamMass.m, beamStiffness.m y beamForce.m.
-%[M_e, K_e, B_e] = beamElementSymbolic();
-
-% ARA JA TENIM ELS ARXIUS BEAM STIFFNESS, BEAMMASS, BEAMFORCE
+%Cal correr kirchoff_love_plate
+%En la funció (kirchoff_love_plate) es genera les funcions plateMass.m, plateStiffness.m y plateForce.m.
+% Després al modal analysis extreiem les matrius: M_e (masa) ,K_e (rigidesa),B_e (cargues aerodinamiques)
 
 %% STEP 4 - Modal Analysis 
 
