@@ -25,9 +25,8 @@ Ny3 = ceil(Ny*(b-y2)/b);
 Ny2 = ceil(Ny*(y2-y1)/b);
 Ny1 = Ny - Ny2 - Ny3;
 
-x = [0:xh/Nx1:xh,xh+(c-xh)/Nx2:(c-xh)/Nx2:c]; %Crec que aixo esta mal
-
-y = [0:y1/Ny1:y1,y1+(y2-y1)/Ny2:(y2-y1(Ny2:y2)),y2+(b-y2)/Ny3:(b-y2)/Ny3:b];
+x = [0:xh/Nx1:xh,xh+(c-xh)/Nx2:(c-xh)/Nx2:c];
+y = [0:y1/Ny1:y1,y1+(y2-y1)/Ny2:(y2-y1)/Ny2:y2,y2+(b-y2)/Ny3:(b-y2)/Ny3:b];
 
 nodes = zeros((Nx+1)*(Ny+1),2);
 
