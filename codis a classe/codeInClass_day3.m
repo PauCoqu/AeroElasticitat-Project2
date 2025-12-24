@@ -161,8 +161,6 @@ U_inf = sort(diag(sqrt(U2_inf)));
 U_d = U_inf(1);
 
 
-% FOTO DE CLASSE AL MBOIL
-
 % Loop through the velocities
 
 

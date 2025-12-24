@@ -1,6 +1,5 @@
 %% CODES COPIED FROM OTHER CLASSES FALTEN COSES AQUI DALT, SUPOSO QUE DEL CODI DE LA CLASSE 3
-
-%% AERODYNAMIC MESH
+%% AERODYNAMIC MESH (CODI CLASSE 4)
 
 x_p = zeros(Nx*Ny,3);
 y_p = zeros(Nx*Ny,3);
@@ -163,6 +162,7 @@ for i = length(U_)
         Umax = U_(i);
         break;
     end
+end
 
 
     %% PLOTS
@@ -240,8 +240,8 @@ for i = 1:length(invk_)
     if max(imag(l_(:,i))) > tol && isempty(Umin)
 
         [~,jast] = max(imag(l_(:,i)));
-        Umin = sqrt(1./real(l_(jmax,i-1)))*c(2*invk_(i-1);
-        Umax = sqrt(1./real(l_(jmax,i)))*c(2*invk_(i-1);
+        Umin = sqrt(1./real(l_(jmax,i-1)))*c(2*invk_(i-1));
+        Umax = sqrt(1./real(l_(jmax,i)))*c(2*invk_(i-1));
     end
 
     % Print iteration time

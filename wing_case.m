@@ -119,10 +119,15 @@ k = 0; %2*pi*freq*c/(2*U_inf);
 % Mach
 M = 0; %U_inf/a_inf; %0; %CAS INCOMPRESSIBLE;
 
-% Since both U_inf and eta are constant for the whole wing, all collocation points will see the same Wref
-%Wref = -1i*k*eta/(c/2)*ones(N_panels,1);
-Wref = alpha*ones(N_panels,1);
 
+% Wref = alpha*ones(N_panels,1); PROJECTE 1
+%Wref = -1i*k*eta/(c/2)*ones(N_panels,1); 
+
+%PROJECTE 2--------------------------
+
+
+
+%------------------------------------
 % AIC matrix coefficients
 AIC = zeros(N_panels,N_panels);
 for i = 1:N_panels

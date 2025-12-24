@@ -20,10 +20,12 @@ poissonRatio = 0.3; % possion alumini (ENUNCIAT)
 b = 12 ; %envergadura d'UNA ala = span 
 lambda = 0.2;  %taper ratio  
 
-
 alpha_deg = 4; % Angle d'atac 
 U_inf = 27; %[m/s]  (aprox 100km/h)
-Nspan = 20; % Nspan discretitza la viga estructural (model 1D en y)
+
+% Malla estructural (model 1D en y)
+Nspan = 20; 
+
 %Malla aerodinamica
 Nx = 10;
 Ny = 21;

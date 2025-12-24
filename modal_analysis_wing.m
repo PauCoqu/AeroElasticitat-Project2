@@ -45,7 +45,6 @@ for e = 1:Ne   % Índex dels dos nodes de l'element e
     Ke = beamStiffness(L, E, Ie, G, Je);
 
     % Calculem els DOFs associats a aquest element (3 DOFs per node)
-    %Formula que funciona
     %(i1-1)*nd + (1:nd)   = (1-1)*3 + [1 2 3] = [1 2 3]
     %(i2-1)*nd + (1:nd)   = (2-1)*3 + [1 2 3] = [4 5 6]
     dofs = [ (i1-1)*nd + (1:nd), (i2-1)*nd + (1:nd) ];
@@ -67,8 +66,8 @@ Mff = M(free, free);
 %Estudiem tots els DOF exepte els 3 primers.
 
 %% Resolem el problema modal Kff*phi = w^2*Mff*phi
-[Phi, D] = eig(full(Kff), full(Mff));
 
+[Phi, D] = eig(full(Kff), full(Mff));
 omega = sqrt(diag(D));      % frequencies propies en rad/s
 f     = omega/(2*pi);       % frequencies propies en Hz
 
