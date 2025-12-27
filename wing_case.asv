@@ -30,7 +30,7 @@ S    = b * (c_root + ctip); % Area de les DOS ales
 AR   = (2*b)^2 / S; % Aspect ratio 
 
 % Corda a cada punt: c(y) = c_root*[1 - (1-lambda)*2y/b]
-y     = linspace(0, b, Ny+1)'; % coordenades de cada node
+y     = linspace(0, b, Ny+1)'; % coordenades de cada punt
 c_y = c_root * (1 - (1 - lambda) * y/b); %corda cada perfil
 
 %Calcul de les propietats al llarg de l'envergadura [span]

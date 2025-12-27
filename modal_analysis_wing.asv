@@ -73,12 +73,13 @@ K = zeros(N_dof,N_dof);
 S = zeros(N_dof,N_panels);
 Ix = zeros(N_panels,N_dof);
 
-for e = 1:N_panels    %%ANEM PER AQUÍ MÉS O MENYS!!!!
+for e = 1:N_panels
     % element half-sizes
     b_e = (nodes(elem(e,4),2) - nodes(elem(e,1),2))/2; %constant
     
     % a_e: és variable quan tenim tapper.
-    %                  y1                    y4
+    y1 = nodes(elem(e,1),2);
+    y4 = nodes(elem(e,4),2);
     ymid = 0.5*(nodes(elem(e,1),2) + nodes(elem(e,4),2));
     c_mid = span.c_root * (1 - (1-span.lambda)*(ymid/span.b));
 
