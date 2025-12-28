@@ -49,11 +49,6 @@ c_y = c_root * (1 - (1 - lambda) * y/b); %corda cada perfil
 f1 = modes.f(1);   % primera freq pròpia
 
 
-
-
-
-
-
 %% STEP 5 - DOUBLET LATTICE 
 % Ja podem correr el solver | %run('doublet_lattice.mlx');
 
@@ -61,8 +56,8 @@ f1 = modes.f(1);   % primera freq pròpia
 N_panels = Nx*Ny; %totals
 
 % Geometry data que falta (pels panells aerodinamics)
-y_mid = ((1:Ny)-0.5)*b/Ny;   % Centre del panell
-c_loc = c_root * (1-(1-lambda)*y_mid/b);
+%y_mid = ((1:Ny)-0.5)*b/Ny;   % Centre del panell
+%c_loc = c_root * (1-(1-lambda)*y_mid/b);
 
 % Let's define the coordinates of each relevant point in all panels
 x_panel = zeros(N_panels,3);
@@ -111,15 +106,9 @@ k = 0; %2*pi*freq*c/(2*U_inf);
 % Mach
 M = 0; %U_inf/a_inf; %0; %CAS INCOMPRESSIBLE;
 
-
 % Wref = alpha*ones(N_panels,1); PROJECTE 1
 %Wref = -1i*k*eta/(c/2)*ones(N_panels,1); 
 
-%PROJECTE 2--------------------------
-
-
-
-%------------------------------------
 % AIC matrix coefficients
 AIC = zeros(N_panels,N_panels);
 for i = 1:N_panels

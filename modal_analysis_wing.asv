@@ -73,19 +73,17 @@ K = zeros(N_dof,N_dof);
 S = zeros(N_dof,N_panels);
 Ix = zeros(N_panels,N_dof);
 
-for e = 1:N_panels
+for e = 1:N_panels    
     % element half-sizes
-    b_e = (nodes(elem(e,4),2) - nodes(elem(e,1),2))/2; %constant
+    b_e = 0.5*(nodes(elem(e,4),2) - nodes(elem(e,1),2)); %constant
     
-    % a_e: és variable quan tenim tapper.
-    y1 = nodes(elem(e,1),2);
-    y4 = nodes(elem(e,4),2);
-    ymid = 0.5*(nodes(elem(e,1),2) + nodes(elem(e,4),2));
-    c_mid = span.c_root * (1 - (1-span.lambda)*(ymid/span.b));
-
-    % chordwise element size ~ c_mid/Nx, so half-size:
-    a_e = 0.5*(c_mid/Nx);
-
+    % a_e: és variable quan tenim tapper. (0.25 perque dividim per 2 dos cops)
+    
+    a_e = 0.25*((nodes(elem(e,2),1) - nodes(elem(e,1),1)) + (nodes(elem(e,3),1) - nodes(elem(e,4),1))) ;
+   
+    %mid chord
+    y_mid = 0.5*(nodes(elem(e,1),2) + nodes(elem(e,4),2));
+    c_mid = span.c_root*(1-(1-span.lambda)*(y_mid/span.b));
     h_e = 0.10 * c_mid;
 
     M_e = plateMass(a_e,b_e,h_e,material.Density);
@@ -93,16 +91,16 @@ for e = 1:N_panels
     S_e = plateForce(a_e,b_e);
 
     %Coeficients del professor
-    Ix_e = [-9/(32*a_e), -9*b_e/64*a_e, 5/32,
-            9/(32*a_e), 9*b_e/64*a_e, -5/32,
-            9/(32*a_e), -9*b_e/64*a_e, 5/32,
-            -9/(32*a_e), 9*b_e/64*a_e, -5/32 ];
+    Ix_e = [-9/(32*a_e), -(9*b_e)/(64*a_e), 5/32,
+            9/(32*a_e), (9*b_e)/(64*a_e), -5/32,
+            9/(32*a_e), -(9*b_e)/(64*a_e), 5/32,
+            -9/(32*a_e), (9*b_e)/(64*a_e), -5/32 ];
 
     % global DOF indices for the 4 nodes
-    I_dof = [3*(elem(e,1)-1) + (1:3)';
-             3*(elem(e,2)-1) + (1:3)';
-             3*(elem(e,3)-1) + (1:3)';
-             3*(elem(e,4)-1) + (1:3)'; ];
+    I_dof = [3*(elem(e,1)-1) + (1:3)',
+             3*(elem(e,2)-1) + (1:3)',
+             3*(elem(e,3)-1) + (1:3)',
+             3*(elem(e,4)-1) + (1:3)' ];
 
     % assembly
     M(I_dof,I_dof) = M(I_dof,I_dof) + M_e;
@@ -114,11 +112,12 @@ end
 %% Boundary conditions: Arrel encastada
 % Fixem els tres DOFs de tots els nodes en y=0 (arrel de l'ala):  [eta (desplaç.)=0, zeta (rot.)=0, theta (torsió)=0]
 I_fix = [
-    1:3*(Ny+1):N_dof,...
-    2:3*(Ny+1):N_dof,...
-    3:3*(Ny+1):N_dof
-    ];
+   1:3*(Ny+1):N_dof,...
+   2:3*(Ny+1):N_dof,...
+   3:3*(Ny+1):N_dof
+   ];
 I_free = setdiff(1:N_dof,I_fix); % setdiff treu elements d'un conjunt.
+
 
 %Estudiem tots els DOF exepte aquests
 
@@ -130,9 +129,12 @@ S_free = S(I_free,:);
 nd   = 3; % DOFs per node: [eta (desplaç.), zeta (rot.), theta (torsió)]
 ndof = nd * N_nodes; % nombre total de graus de llibertat
 
-% Matrius globals de rigidesa i massa
-K = sparse(ndof, ndof);
-M = sparse(ndof, ndof);
+% Aeroelastic coupling
+rho_inf = 1.25;
+A0 = rho_inf/2*S*(AIC\Ix);
+
+% Comput divergence speed
+[X_div,U_inf] = eigs(sparse(K(I_free,I_free)),sparse(A0(I_free,I_free)),10,"sm");
 
 
 
