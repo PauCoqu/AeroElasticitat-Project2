@@ -5,8 +5,6 @@
 %-------------------------------------------
 clear; clc; close all
 
-%% PROJECTE 1:
-
 %% STEP 1: Section properties (del pefil) ('beam_properties')  [section]
 
 %Material
@@ -24,10 +22,10 @@ alpha_deg = 4; % Angle d'atac
 U_inf = 27; %[m/s]  (aprox 100km/h)
 
 % Malla estructural (Model 2D)
-Nspan = 20;  %Numero d'elements
+Nspan = 10;  %Numero d'elements
 
 %Malla aerodinamica
-Nx = 10; %Numero d'elements
-Ny = 10;
+Nx = 5; %Numero d'elements
+Ny = 5;
 
 metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nspan, Nx, Ny, alpha_deg, U_inf);
