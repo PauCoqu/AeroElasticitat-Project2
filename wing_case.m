@@ -1,4 +1,4 @@
-function metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nspan, Nx, Ny, alpha_deg,U_inf)
+function metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny, alpha_deg,U_inf)
 
 %% STEP 1: Section properties (del pefil) ('beam_properties')
 
@@ -116,7 +116,7 @@ I_free  = modes.freeDOFs;
 S       = modes.S;
 Ix      = modes.Ix;
 
-A0 = 0.5*rho_inf * (S*(AIC\Ix));   % full
+A0 = 0.5*rho_inf * (S*(AIC\Ix));
 A0_free = A0(I_free,I_free);
 
 % Compute divergence speed(s): Kff x = U^2 A0ff x
@@ -301,7 +301,6 @@ fprintf('C_sigma/mu       = %.4f\n', Csigma_over_mu);
 metrics.y_panel = y_mid;
 metrics.b = b;
 metrics.lambda = lambda;
-metrics.Nspan = Nspan;
 metrics.Nx = Nx;
 metrics.Ny = Ny;
 metrics.S = S;

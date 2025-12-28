@@ -16,16 +16,13 @@ poissonRatio = 0.3; % possion alumini (ENUNCIAT)
 
 % VALORS DE DISSENY FINAL (Projecte 1)
 b = 12 ; %envergadura d'UNA ala = span 
-lambda = 0.6;  %taper ratio  
+lambda = 0.2;  %taper ratio  
 
 alpha_deg = 4; % Angle d'atac 
 U_inf = 27; %[m/s]  (aprox 100km/h)
 
-% Malla estructural (Model 2D)
-Nspan = 10;  %Numero d'elements
-
-%Malla aerodinamica
-Nx = 5; %Numero d'elements
+% Malla estructural i Malla aerodinamica
+Nx = 10; %Numero d'elements
 Ny = 5;
 
-metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nspan, Nx, Ny, alpha_deg, U_inf);
+metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny, alpha_deg,U_inf);
