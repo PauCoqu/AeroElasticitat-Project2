@@ -104,7 +104,7 @@ for i = 1:Nx*Ny
             9/(32*a_e), -9*b_e/64*a_e, 5/32,
             -9/(32*a_e), 9*b_e/64*a_e, -5/32,
 
-        ]
+        ];
 
 
     %Globsl indices vector

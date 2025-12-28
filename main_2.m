@@ -13,19 +13,21 @@ youngModulus = 69000000000; % E alumini (ENUNCIAT)
 poissonRatio = 0.3; % possion alumini (ENUNCIAT)
 
 %% STEP 2 - Spanwise distributions
+%Ala conditions
+y0 = 0.34;
 
 % VALORS DE DISSENY FINAL (Projecte 1)
 b = 12 ; %envergadura d'UNA ala = span 
 lambda = 0.6;  %taper ratio  
 
 alpha_deg = 4; % Angle d'atac 
-U_inf = 27; %[m/s]  (aprox 100km/h)
+U_inf = [27 110 130]; %[m/s]  (aprox 100km/h)
 
 % Malla estructural (Model 2D)
 Nspan = 10;  %Numero d'elements
 
 %Malla aerodinamica
 Nx = 5; %Numero d'elements
-Ny = 5;
+Ny = 10;
 
-metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nspan, Nx, Ny, alpha_deg, U_inf);
+metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nspan, Nx, Ny, alpha_deg, U_inf, y0);

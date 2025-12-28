@@ -134,11 +134,7 @@ q_free = q_free;
 %     Wref = -U_inf(i) * (Ix .* q_free);
 % end
 
-Wref = 1; % NO EM DONEN IGUALS LES DIMENSIONS DE Wref i Ix. Dema segueixo
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+Wref = 1; % NO EM DONEN IGUALS LES 
 % Now we can compute the pressure difference coefficients complex amplitudes
 C_p = -(AIC\Wref);
 

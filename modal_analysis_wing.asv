@@ -59,7 +59,8 @@ for e = 1:N_panels
     %mid chord
     y_mid = 0.5*(nodes(elem(e,1),2) + nodes(elem(e,4),2));
     c_mid = c(1) * (1 - (1 - span.lambda) * (y_mid-y(1))/(span.b)); %corda cada perfil
-    h_e = 0.05 * c_mid;
+    h_e = 0.10 * c_mid;
+    h_e = 0.01;
 
     M_e = plateMass(a_e,b_e,h_e,material.Density);
     K_e = plateStiffness(a_e,b_e,h_e,material.YoungModulus,material.Poisson);
