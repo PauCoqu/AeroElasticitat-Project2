@@ -27,4 +27,4 @@ U_inf = [27 110 130]; %[m/s]  (aprox 100km/h)
 Nx = 10; %Numero d'elements
 Ny = 5;
 
-metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny, alpha_deg,U_inf);
+metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0);

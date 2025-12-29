@@ -1,4 +1,4 @@
-function [modes,malla] = modal_analysis_wing(span, material,Nx,Ny,N_panels)
+function [modes,malla,N_dof] = modal_analysis_wing(span, material,Nx,Ny,N_panels)
 % Construim el model de viga i resolem el problema modal K*phi = w^2*M*phi.
 % El resultat són les freqüències pròpies (f, omega) i les formes modals (Phi) de l'ala.
 
@@ -40,34 +40,6 @@ for i = 1:Nx
     end
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-figure; hold on; axis equal; grid on
-
-% Elements
-for e = 1:size(elem,1)
-    xy = nodes(elem(e,:),:);
-    plot([xy(:,1); xy(1,1)], [xy(:,2); xy(1,2)], 'k-');
-
-    % número d’element (al centre)
-    xc = mean(xy(:,1));
-    yc = mean(xy(:,2));
-    text(xc, yc, num2str(e), 'Color','r','FontSize',8,...
-        'HorizontalAlignment','center');
-end
-
-% Nodes
-plot(nodes(:,1), nodes(:,2), 'b.', 'MarkerSize', 12)
-
-for k = 1:size(nodes,1)
-    text(nodes(k,1), nodes(k,2), [' ' num2str(k)], ...
-        'Color','b','FontSize',8);
-end
-
-xlabel('x'); ylabel('y');
-title('Wing structural mesh (nodes + elements)');
-
-%%%%%%%%%%%%%%%%%%%%%%%
-
 %% Ensamblatje matrius estructurals
 
 N_dof = 3*N_nodes;
@@ -75,6 +47,7 @@ M = zeros(N_dof,N_dof);
 K = zeros(N_dof,N_dof);
 S = zeros(N_dof,N_panels);
 Ix = zeros(N_panels,N_dof);
+It = zeros(N_panels,N_dof);
 
 for e = 1:N_panels    
     % element half-sizes
@@ -96,17 +69,23 @@ for e = 1:N_panels
     %Coeficients del professor
     Ix_e = [-9/(32*a_e), -(9*b_e)/(64*a_e), 5/32, 9/(32*a_e), (9*b_e)/(64*a_e), -3/32, 9/(32*a_e), -(9*b_e)/(64*a_e), -3/32, -9/(32*a_e), (9*b_e)/(64*a_e), 5/32];
 
+    % Collocation point interpolation
+    It_e = [5/64, 5*b_e/128, -3*a_e/64, 27/64, 27*b_e/128, 9*a_e/64, 27/64, -27*b_e/128, 9*a_e/64, 5/64, -5*b_e/128, -3*a_e/64];
+    
     % global DOF indices for the 4 nodes
-    I_dof = [3*(elem(e,1)-1) + (1:3)', ...
-             3*(elem(e,2)-1) + (1:3)', ...
-             3*(elem(e,3)-1) + (1:3)', ...
-             3*(elem(e,4)-1) + (1:3)'];
+    I_dof = [
+        3*(elem(e,1)-1) + [1;2;3];
+        3*(elem(e,2)-1) + [1;2;3];
+        3*(elem(e,3)-1) + [1;2;3];
+        3*(elem(e,4)-1) + [1;2;3];
+        ];
 
-    % assembly
+    %Assembly
     M(I_dof,I_dof) = M(I_dof,I_dof) + M_e;
     K(I_dof,I_dof) = K(I_dof,I_dof) + K_e;
     S(I_dof,e)     = S(I_dof,e) + S_e;
     Ix(e,I_dof)    = Ix(e,I_dof) + Ix_e;
+    It(e,I_dof)    = It(e,I_dof) + It_e;
 end
 
 %% Boundary conditions: Arrel encastada
@@ -130,10 +109,6 @@ ndof = nd * N_nodes; % nombre total de graus de llibertat
 
 %% Resolem el problema modal K_free * phi = w^2 * M_free * phi (Projecte 1)
 
-[Phi, D] = eig(K_free, M_free);
-omega = sqrt(diag(D));      % frequencies propies en rad/s
-f     = omega/(2*pi);       % frequencies propies en Hz
-
 [Phi_free, D] = eig(K_free, M_free);     % Phi_free: (#free DOF x #modes)
 omega = sqrt(diag(D));
 freq  = omega/(2*pi);
@@ -148,13 +123,18 @@ Phi_free = Phi_free(:,idx);
 %disp(f_sorted(1:min(10, numel(f_sorted)))');
 
 %% Guardem resultats
-modes.Phi_free = Phi_free;   % size: (#free DOF) x nModes
-modes.freq     = freq;
-modes.M_free      = M_free;
-modes.K_free      = K_free;
-modes.freeDOFs = I_free;
-modes.S        = S;
-modes.Ix       = Ix;
+modes.Phi_free   = Phi_free;   % size: (#free DOF) x nModes
+modes.freq       = freq;
+modes.M          = M;
+modes.S          = S;
+modes.K          = K;
+modes.Ix         = Ix;
+modes.It         = It;
+modes.M_free     = M_free;
+modes.K_free     = K_free;
+modes.S_free     = S_free;
+modes.freeDOFs   = I_free;
+
 
 malla.nodes = nodes;
 malla.elements = elem;

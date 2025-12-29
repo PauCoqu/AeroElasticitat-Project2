@@ -1,4 +1,4 @@
-function [modes,malla] = modal_analysis_wing(span, material,Nx,Ny,N_panels)
+function [modes,malla,N_dof] = modal_analysis_wing(span, material,Nx,Ny,N_panels)
 % Construim el model de viga i resolem el problema modal K*phi = w^2*M*phi.
 % El resultat són les freqüències pròpies (f, omega) i les formes modals (Phi) de l'ala.
 
@@ -59,8 +59,7 @@ for e = 1:N_panels
     %mid chord
     y_mid = 0.5*(nodes(elem(e,1),2) + nodes(elem(e,4),2));
     c_mid = c(1) * (1 - (1 - span.lambda) * (y_mid-y(1))/(span.b)); %corda cada perfil
-    h_e = 0.10 * c_mid;
-    h_e = 0.01;
+    h_e = 0.05 * c_mid;
 
     M_e = plateMass(a_e,b_e,h_e,material.Density);
     K_e = plateStiffness(a_e,b_e,h_e,material.YoungModulus,material.Poisson);
@@ -69,13 +68,18 @@ for e = 1:N_panels
     %Coeficients del professor
     Ix_e = [-9/(32*a_e), -(9*b_e)/(64*a_e), 5/32, 9/(32*a_e), (9*b_e)/(64*a_e), -3/32, 9/(32*a_e), -(9*b_e)/(64*a_e), -3/32, -9/(32*a_e), (9*b_e)/(64*a_e), 5/32];
 
+    % Collocation point interpolation
+    It_e = [5/64, 5*b_e/128, -3*a_e/64, 27/64, 27*b_e/128, 9*a_e/64, 27/64, -27*b_e/128, 9*a_e/64, 5/64, -5*b_e/128, -3*a_e/64];
+    
     % global DOF indices for the 4 nodes
-    I_dof = [3*(elem(e,1)-1) + (1:3)', ...
-             3*(elem(e,2)-1) + (1:3)', ...
-             3*(elem(e,3)-1) + (1:3)', ...
-             3*(elem(e,4)-1) + (1:3)'];
+    I_dof = [
+        3*(elem(e,1)-1) + [1;2;3];
+        3*(elem(e,2)-1) + [1;2;3];
+        3*(elem(e,3)-1) + [1;2;3];
+        3*(elem(e,4)-1) + [1;2;3];
+        ];
 
-    % assembly
+    %Assembly
     M(I_dof,I_dof) = M(I_dof,I_dof) + M_e;
     K(I_dof,I_dof) = K(I_dof,I_dof) + K_e;
     S(I_dof,e)     = S(I_dof,e) + S_e;
@@ -103,10 +107,6 @@ ndof = nd * N_nodes; % nombre total de graus de llibertat
 
 %% Resolem el problema modal K_free * phi = w^2 * M_free * phi (Projecte 1)
 
-[Phi, D] = eig(K_free, M_free);
-omega = sqrt(diag(D));      % frequencies propies en rad/s
-f     = omega/(2*pi);       % frequencies propies en Hz
-
 [Phi_free, D] = eig(K_free, M_free);     % Phi_free: (#free DOF x #modes)
 omega = sqrt(diag(D));
 freq  = omega/(2*pi);
@@ -121,13 +121,16 @@ Phi_free = Phi_free(:,idx);
 %disp(f_sorted(1:min(10, numel(f_sorted)))');
 
 %% Guardem resultats
-modes.Phi_free = Phi_free;   % size: (#free DOF) x nModes
-modes.freq     = freq;
-modes.M_free      = M_free;
-modes.K_free      = K_free;
-modes.freeDOFs = I_free;
-modes.S        = S;
-modes.Ix       = Ix;
+modes.Phi_free   = Phi_free;   % size: (#free DOF) x nModes
+modes.freq       = freq;
+modes.M_free     = M_free;
+modes.M          = M;
+modes.M          = M;
+modes.M          = M;
+modes.K_free     = K_free;
+modes.freeDOFs   = I_free;
+modes.S          = S;
+modes.Ix         = Ix;
 
 malla.nodes = nodes;
 malla.elements = elem;
