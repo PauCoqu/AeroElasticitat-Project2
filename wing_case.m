@@ -129,7 +129,7 @@ A0_free = A0(I_free,I_free);
 %it extract the eigenvectors and eigenvalues. We only want the eigenvalues U^2
 [q_free,U2] = eigs(sparse(K_free), sparse(A0_free), 10, "smallestabs");
 U = sort(sqrt(real(diag(U2))));
-Ud = U(1);                                       %% DIVERGENCE SPEED
+Ud = U(1)        %% DIVERGENCE SPEED
 q_free = q_free; %Per a què serveix q_free?
 
 
@@ -137,18 +137,19 @@ q_free = q_free; %Per a què serveix q_free?
 % for i=1:length(U_inf)
 %     Wref = -U_inf(i) * (Ix .* q_free);
 % end
-
-Wref = 1; 
+%Wref = 1; 
 
 %--------------------------
 %% p method
 
-k = 0; % quasi-steady  %JA DEFINIT MÉS AMUNT
-M_inf = 0; % Incompressibility %JA DEFINIT MÉS AMUNT
+%k = 0; % quasi-steady  %JA DEFINIT MÉS AMUNT
+%M_inf = 0; % Incompressibility %JA DEFINIT MÉS AMUNT
+
+Ud = 466; %AHIR DONAVA AIXÒ APROX I ARA DONA 0.00 + 0.77i....
 
 %Reuse modal results from modal_analysis_wing
 q_mod = zeros(N_dof, size(modes.Phi_free,2));
-q_mod(I_free,:) = modes.Phi_free;
+q_mod(I_free,:) = Phi_free;
 
 % Select modes for p-method as we do a Model reduction
 i_modes = [1,2,3,5];
@@ -179,7 +180,7 @@ U_min = [];
 U_max = [];
 
 % Loop through velocities
-for i = length(U_)
+for i = 1:length(U_)
 
     % Effecftive matrices
     Keff = K_red - U_(i)^2*A0_red;
@@ -200,7 +201,7 @@ for i = length(U_)
         p_(:,i) = p;
         m_(:,:,i) = X(1:N_modes,:);
     else
-        m2sort = 1:2*N;
+        m2sort = 1:2*N_modes;
         for j = 1:length(p)
             [~,jmin] = min(abs(real(p_(j,i-1))-real(p(m2sort)))+ abs(imag(p_(j,i-1))-imag(p(m2sort))));
 
@@ -212,30 +213,30 @@ for i = length(U_)
     end
 
     %Check stability
-    if max(real(p_(:,i))) > tol && isempty(Umin) % Check if the min vel is encounterd. If yes, the flutter speed is betweem this iteration and the past one
-        Umin = U_(i-1);
-        Umax = U_(i);
-        break;
+    if i > 1 && max(real(p_(:,i))) > tol && isempty(U_min) % Check if the min vel is encounterd. If yes, the flutter speed is betweem this iteration and the past one
+    U_min = U_(i-1);
+    U_max = U_(i);
+    break;
     end
 end
 
+% PLOTS
 
-    %% PLOTS
+figure
+subplot(2,1,1)
+hold on; box on;
+plot(U_/Ud,real(p_).*c_root./(2*U_));
+xlabel("U/U_D");
+ylabel("p_Rc/2U");
 
-    figure
-    subplot(2,1,1)
-    hold on; box on;
-    plot(U_/Ud,real(p_)*c./(2*U));
-    xlabel("U/U_D");
-    ylabel("p_Rc/2U");
+subplot(2,1,2)
+hold on; box on;
+plot(U_/Ud,imag(p_).*c_root./(2*pi));
+xlabel("U/U_D");
+ylabel("p_I/2\pi");
 
-    subplot(2,1,2)
-    hold on; box on;
-    plot(U_/Ud,imag(p_)*c./(2*pi));
-    xlabel("U/U_D");
-    ylabel("p_I/2\pi");
-
-
+%--------------------------
+%% k method
 
 
 
