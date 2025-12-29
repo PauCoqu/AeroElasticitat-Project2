@@ -5,7 +5,8 @@ Ixx0 = section.Ixx;
 J0   = section.kt;
 x_cm0  = section.xcm;
 x_sc0  = section.xsc;      
-I_sc0  = section.Isc;      
+I_sc0  = section.Isc;
+
 
 % Scaling 
 A   = A0  * (c_y/c_root).^2;
