@@ -26,15 +26,15 @@ scale =0; % de 0 a 1, deflexió del perfil
 %% STEP 2: Spanwise distributions 
     
 ctip = lambda * c_root; %corda punta
-S    = b * (c_root + ctip); % Area de les DOS ales
-AR   = (2*b)^2 / S; % Aspect ratio 
+Surf    = b * (c_root + ctip); % Area de les DOS ales
+AR   = (2*b)^2 / Surf; % Aspect ratio 
 
 % Corda a cada punt: c(y) = c_root*[1 - (1-lambda)*2y/b]
 y = linspace(y0, b+y0, Ny+1)'; % coordenades de cada node sense tenir en compte y0=0.34
 c_y = c_root * (1 - (1 - lambda) * (y-y0)/(b)); %corda cada perfil
 
 %Calcul de les propietats al llarg de l'envergadura [span]
-[span] = spanwise_distributions(section, material, c_y, c_root, y, b, S, AR, lambda);
+[span] = spanwise_distributions(section, material, c_y, c_root, y, b, Surf, AR, lambda);
 
 %% STEP 3 - Kirchoff_love_plate 
 
@@ -99,9 +99,11 @@ for i = 1:N_panels
     y_i = y_p(i,3);
     % Loop through all doublet segments
     for j = 1:N_panels
+        y_mid_j = y_p(j,3);
+        c_local = c_root * (1 - (1 - lambda) * (y_mid_j - y0)/b);
         % We add the induced velocity contribution to the AIC
-        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,:),y_p(j,:),c_root/2,M_inf,k,1);
-        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,[2,1,3]),-y_p(j,[2,1,3]),c_root/2,M_inf,k,1);
+        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,:),y_p(j,:),c_local/2,M_inf,k,1);
+        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,[2,1,3]),-y_p(j,[2,1,3]),c_local/2,M_inf,k,1);
     end
 end
 
@@ -228,18 +230,155 @@ ylabel("p_Rc/2U");
 
 subplot(2,1,2)
 hold on; box on;
-plot(U_./Ud,imag(p_).*c_root./(2*pi));
+plot(U_./Ud,imag(p_)./(2*pi));
 xlabel("U_{\infty}/U_D");
 ylabel("p_I/2\pi");
 
 %--------------------------
 %% k method
 
+%% k method (DLM) — based on your class notes
 
-Beff = M 
+% --------------------------
+% Aerodynamic AIC as function of k
+M_inf = 0;
+
+% If you already have a function like dlmAIC_vec, use it:
+% AICfun = @(k_) dlmAIC_vec(x_p, y_p, k_, M_inf, c_ref/2);
+
+% Otherwise, wrap YOUR Step 5.1 in a function handle (local function at bottom):
+AICfun = @(k_) AIC_builder(k_, x_p, y_p, N_panels, c_root, lambda, y0, b, M_inf);
+
+% --------------------------
+% Sweep in invk = 1/k (recommended)
+dinvk = 0.1;
+invk_ = dinvk:dinvk:20;        % invk = 1/k
+Nk    = length(invk_);
+
+% Avoid k too small
+k_min = 1/max(invk_);
+if k_min < 1e-3
+    warning("Very small k in sweep; consider limiting invk_ to avoid k->0 issues in k-method.");
+end
+
+tol = 1e-6;
+
+% Storage
+N = size(K_red,1);             % number of retained modes
+m_ = nan(N,N,Nk);              % eigenvectors (modal coordinates)
+l_ = nan(N,Nk);                % store lambda' = 1/lambda (complex)
+
+Umin = [];
+Umax = [];
+jmax = [];
 
 
+% Loop through reduced frequencies
+for i = 1:Nk
+    k = 1/invk_(i);
 
+    % Build AIC(k)
+    AICk = AICfun(k);
+
+    % Build Beff(k) directly in the "notes" form:
+    % Beff = M_red + (rho/2) * S_red * AIC^{-1} * ( i*c/(2k)*It_red + c^2/(4k^2)*Ix_red )
+    RHS  = (1i*c_ref(i)/(2*k)) * It_red + (c_ref(i)^2/(4*k^2)) * Ix_red;  % (N_panels x N)
+    Beff = M_red + (rho_inf/2) * (S_red * (AICk \ RHS));            % (N x N)
+
+    % Generalized eigenproblem: K_red * x = lambda * Beff * x
+    [X, L] = eig(K_red, Beff);
+    lam = diag(L);
+
+    % Store lambda' = 1/lambda (this is what your notes do)
+    l = 1 ./ lam;
+
+    % --------------------------
+    % Mode tracking (same idea as your p-method)
+    if i == 1
+        l_(:,i)   = l;
+        m_(:,:,i) = X;
+    else
+        m2sort = 1:N;
+        for j = 1:N
+            % nearest in complex plane
+            [~, jast] = min( abs(real(l_(j,i-1)) - real(l(m2sort))) + ...
+                             abs(imag(l_(j,i-1)) - imag(l(m2sort))) );
+            l_(j,i)   = l(m2sort(jast));
+            m_(:,j,i) = X(:,m2sort(jast));
+            m2sort    = setdiff(m2sort, m2sort(jast));
+        end
+    end
+
+    % --------------------------
+    % Check flutter bracket using g crossing (more correct than imag(l)>0)
+    if i > 1 && isempty(Umin)
+        g_prev = imag(l_(:,i-1)) ./ real(l_(:,i-1));
+        g_curr = imag(l_(:,i))   ./ real(l_(:,i));
+
+        % find a mode that crosses 0
+        cross = find(g_prev .* g_curr < 0, 1, "first");
+        if ~isempty(cross)
+            jmax = cross;
+
+            % Recover omega and U at the two points (from lambda')
+            w_prev = sqrt(1 ./ real(l_(jmax,i-1)));
+            w_curr = sqrt(1 ./ real(l_(jmax,i)));
+
+            U_prev = w_prev * c_ref/2 * invk_(i-1);
+            U_curr = w_curr * c_ref/2 * invk_(i);
+
+            Umin = U_prev;
+            Umax = U_curr;
+        end
+    end
+
+end
+
+% --------------------------
+% Recover parameters (as in your notes)
+g_ = imag(l_) ./ real(l_);
+w_ = sqrt(1 ./ real(l_));          % omega
+U_ = (w_ * c_ref/2) .* invk_;      % U = omega*c/2 * invk
+
+% --------------------------
+% Print result
+if isempty(Umin)
+    disp("No flutter bracket found (no g crossing 0) in the scanned invk range.");
+else
+    fprintf("Flutter bracket found (mode %d): UF in [%.3f, %.3f] m/s\n", jmax, Umin, Umax);
+end
+
+% --------------------------
+% Plots (same style as your notes)
+figure
+subplot(2,1,1)
+hold on; box on;
+plot(U_.'/Ud, g_.', 'LineWidth', 1.2);
+yline(0,'--');
+xlabel("U/U_D");
+ylabel("g");
+
+subplot(2,1,2)
+hold on; box on;
+plot(U_.'/Ud, (w_.'/(2*pi)), 'LineWidth', 1.2);
+xlabel("U/U_D");
+ylabel("\omega/2\pi [Hz]");
+
+%% -------- local function (if you don't have dlmAIC_vec) --------
+function AIC = AIC_builder(k, x_p, y_p, N_panels, c_root, taper, y0, b, M_inf)
+    AIC = complex(zeros(N_panels, N_panels));
+    for t=1:N_panels
+        x_i = x_p(t,3);
+        y_i = y_p(t,3);
+        for r = 1:N_panels
+            y_mid_j = y_p(r,3);
+            c_local = c_root * (1 - (1 - taper) * (y_mid_j - y0)/b);
+    
+            AIC(i,j) = AIC(i,j) + w_doublet(x_i, y_i, x_p(r,:),        y_p(r,:),         c_local/2, M_inf, k, 1);
+            AIC(i,j) = AIC(i,j) + w_doublet(x_i, y_i, x_p(r,[2,1,3]), -y_p(r,[2,1,3]),    c_local/2, M_inf, k, 1);
+        end
+    end
+end
 
 
 

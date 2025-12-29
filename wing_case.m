@@ -26,15 +26,15 @@ scale =0; % de 0 a 1, deflexió del perfil
 %% STEP 2: Spanwise distributions 
     
 ctip = lambda * c_root; %corda punta
-S    = b * (c_root + ctip); % Area de les DOS ales
-AR   = (2*b)^2 / S; % Aspect ratio 
+Surf    = b * (c_root + ctip); % Area de les DOS ales
+AR   = (2*b)^2 / Surf; % Aspect ratio 
 
 % Corda a cada punt: c(y) = c_root*[1 - (1-lambda)*2y/b]
 y = linspace(y0, b+y0, Ny+1)'; % coordenades de cada node sense tenir en compte y0=0.34
 c_y = c_root * (1 - (1 - lambda) * (y-y0)/(b)); %corda cada perfil
 
 %Calcul de les propietats al llarg de l'envergadura [span]
-[span] = spanwise_distributions(section, material, c_y, c_root, y, b, S, AR, lambda);
+[span] = spanwise_distributions(section, material, c_y, c_root, y, b, Surf, AR, lambda);
 
 %% STEP 3 - Kirchoff_love_plate 
 
@@ -99,9 +99,11 @@ for i = 1:N_panels
     y_i = y_p(i,3);
     % Loop through all doublet segments
     for j = 1:N_panels
+        y_mid_j = y_p(j,3);
+        c_local = c_root * (1 - (1 - lambda) * (y_mid_j - y0)/b);
         % We add the induced velocity contribution to the AIC
-        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,:),y_p(j,:),c_root/2,M_inf,k,1);
-        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,[2,1,3]),-y_p(j,[2,1,3]),c_root/2,M_inf,k,1);
+        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,:),y_p(j,:),c_local/2,M_inf,k,1);
+        AIC(i,j) = AIC(i,j) + w_doublet(x_i,y_i,x_p(j,[2,1,3]),-y_p(j,[2,1,3]),c_local/2,M_inf,k,1);
     end
 end
 
@@ -165,7 +167,7 @@ A0_red = rho_inf/2*S_red*(AIC\Ix_red);
 A1_red = -rho_inf/2*S_red*(AIC\It_red);
 
 % Initialize velocity vector
-U_ = 5:5:1.6*Ud;
+U_ = 5:5:1.4*Ud;
 
 % Zero tolerance
 tol = 1e-6;
@@ -228,19 +230,12 @@ ylabel("p_Rc/2U");
 
 subplot(2,1,2)
 hold on; box on;
-plot(U_./Ud,imag(p_).*c_root./(2*pi));
+plot(U_./Ud,imag(p_)./(2*pi));
 xlabel("U_{\infty}/U_D");
 ylabel("p_I/2\pi");
 
 %--------------------------
 %% k method
-
-
-Beff = M 
-
-
-
-
 
 
 

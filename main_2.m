@@ -24,7 +24,7 @@ alpha_deg = 4; % Angle d'atac
 U_inf = [27 110 130]; %[m/s]  (aprox 100km/h)
 
 % Malla estructural i Malla aerodinamica
-Nx = 25; %Numero d'elements
-Ny = 25;
+Nx = 20; %Numero d'elements
+Ny = 20;
 
 metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0);
