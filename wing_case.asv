@@ -116,7 +116,7 @@ I_free  = modes.freeDOFs;
 S       = modes.S;
 Ix      = modes.Ix;
 
-A0 = 0.5*rho_inf * (S*(AIC\Ix));
+A0 = 0.5*rho_inf * (S*(AIC\Ix));   % full
 A0_free = A0(I_free,I_free);
 
 % Compute divergence speed(s): Kff x = U^2 A0ff x
@@ -134,11 +134,7 @@ q_free = q_free;
 %     Wref = -U_inf(i) * (Ix .* q_free);
 % end
 
-Wref = 1; % NO EM DONEN IGUALS LES DIMENSIONS DE Wref i Ix. Dema segueixo
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+Wref = 1; % NO EM DONEN IGUALS LES 
 % Now we can compute the pressure difference coefficients complex amplitudes
 C_p = -(AIC\Wref);
 
@@ -311,6 +307,7 @@ fprintf('C_sigma/mu       = %.4f\n', Csigma_over_mu);
 metrics.y_panel = y_mid;
 metrics.b = b;
 metrics.lambda = lambda;
+metrics.Nspan = Nspan;
 metrics.Nx = Nx;
 metrics.Ny = Ny;
 metrics.S = S;

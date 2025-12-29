@@ -26,6 +26,9 @@ m  = material.Density * A;
 % Distance between CM and SC
 d  = x_cm - x_sc;
 
+% Distance moved
+dx_sc = x_sc0(1)-x_sc; % cant forget the distance we have moved it
+
 % Store everything
 span.y      = y;
 span.c_y    = c_y;
@@ -41,4 +44,6 @@ span.S      = S;
 span.c_root = c_root;
 span.lambda = lambda;
 span.AR     = AR;
+span.dx_sc  = dx_sc; % needed distance to obtain a shear center line perpendicular to plane xz.
+
 end
