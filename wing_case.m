@@ -30,7 +30,7 @@ Surf    = b * (c_root + ctip); % Area de les DOS ales
 AR   = (2*b)^2 / Surf; % Aspect ratio 
 
 % Corda a cada punt: c(y) = c_root*[1 - (1-lambda)*2y/b]
-y = linspace(y0, b+y0, Ny+1)'; % coordenades de cada node sense tenir en compte y0=0.34
+y = linspace(y0, b+y0, Ny+1)'; % coordenades dels nodes tenint en compte y0=0.34
 c_y = c_root * (1 - (1 - lambda) * (y-y0)/(b)); %corda cada perfil
 
 %Calcul de les propietats al llarg de l'envergadura [span]
