@@ -211,16 +211,13 @@ for i = 1:length(invk_)
     % Initilize timer
     tic
 
-
-
     % Effective matrices
-    k = 1/invk-(i);
+    k = 1/invk_(i);
     Beff = M_red + rho_inf/2*S_red*(AIC(k)\(1i*c/(2*k)*It_red + c^2/(4*k^2)*Ix_red));
 
     %Eigenvalues
     [X, L] = eig(K_red,Beff);
     l = 1./diag(L);
-
 
     % Sort modes
     if i == 1

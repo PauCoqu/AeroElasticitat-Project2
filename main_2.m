@@ -18,7 +18,7 @@ y0 = 0.34;
 
 % VALORS DE DISSENY FINAL (Projecte 1)
 b = 12 ; %envergadura d'UNA ala = span 
-lambda = 0.6;  %taper ratio  
+lambda = 0.2;  %taper ratio  
 
 alpha_deg = 4; % Angle d'atac 
 U_inf = [27 110 130]; %[m/s]  (aprox 100km/h)

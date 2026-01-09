@@ -6,7 +6,7 @@ N_nodes = (Nx+1)*(Ny+1);
 c = span.c_y;
 y = span.y;
 dx = span.dx_sc; % needed distance to obtain a shear center line perpendicular to plane xz
-xi = linspace(0,1,Nx+1);  % Chordwise normalized coordinate (0 -> 1)
+xi = linspace(0,1,Nx+1);  % normalised to later multiply
 
 
 %% Malla ESTRUCTURAL 2D de viga:
@@ -19,11 +19,14 @@ xi = linspace(0,1,Nx+1);  % Chordwise normalized coordinate (0 -> 1)
    %* = node estructural
 
 %Nodes
-nodes = zeros(N_nodes,2); % 2 cops per -> [x,y]  
+nodes = zeros(N_nodes,2); % 2 cops per -> [x,y]  x_panel(k,1) = 
 for i = 1:Nx+1 %i = direcció x
     for j = 1:Ny+1 %j direcció y
         k = (Ny+1)*(i-1) + j; 
-        nodes(k,1) = xi(i) * c(j) + dx(j) ;  %EXPLICAR MOTIU NORMALITZACIÓ
+        nodes(k,1) = xi(i) * c(j) + dx(j);  %dx!! cant forget the distance we have moved the entire airfoil
+                                            % to reach the sc at a line perpendicular to xz plane
+                                            % ara ho poso directament als nodes, per lo que no haure
+                                            % d'adaptarho posteriorment anymore
         nodes(k,2) = y(j);
     end
 end
@@ -40,6 +43,33 @@ for i = 1:Nx
     end
 end
 
+
+figure; hold on; axis equal; grid on
+
+% Elements
+for e = 1:size(elem,1)
+    xy = nodes(elem(e,:),:);
+    plot([xy(:,1); xy(1,1)], [xy(:,2); xy(1,2)], 'k-');
+
+    % número d’element (al centre)
+    xc = mean(xy(:,1));
+    yc = mean(xy(:,2));
+    text(xc, yc, num2str(e), 'Color','r','FontSize',8,...
+        'HorizontalAlignment','center');
+end
+
+% Nodes
+plot(nodes(:,1), nodes(:,2), 'b.', 'MarkerSize', 12)
+
+for k = 1:size(nodes,1)
+    text(nodes(k,1), nodes(k,2), [' ' num2str(k)], ...
+        'Color','b','FontSize',8);
+end
+
+xlabel('x'); ylabel('y');
+title('Wing structural mesh (nodes + elements)');
+
+
 %% Ensamblatje matrius estructurals
 
 N_dof = 3*N_nodes;
@@ -54,8 +84,7 @@ for e = 1:N_panels
     b_e = 0.5*(nodes(elem(e,4),2) - nodes(elem(e,1),2)); %constant
     
     % a_e: és variable quan tenim tapper. (0.25 perque dividim per 2 dos cops)
-    
-    a_e = 0.25*((nodes(elem(e,2),1) - nodes(elem(e,1),1)) + (nodes(elem(e,3),1) - nodes(elem(e,4),1))) ;
+    a_e = 0.25*((nodes(elem(e,2),1) - nodes(elem(e,1),1)) + (nodes(elem(e,3),1) - nodes(elem(e,4),1)));
    
     %mid chord
     y_mid = 0.5*(nodes(elem(e,1),2) + nodes(elem(e,4),2));

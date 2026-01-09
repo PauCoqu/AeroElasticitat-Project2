@@ -153,6 +153,7 @@ q_mod(I_free,:) = Phi_free;
 
 % Select modes for p-method as we do a Model reduction
 i_modes = [1,2,3,5];
+i_modes = [1,2];  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BORRAR
 N_modes = length(i_modes);
 Phi = q_mod(:, i_modes);
 
@@ -235,7 +236,312 @@ xlabel("U_{\infty}/U_D");
 ylabel("p_I/2\pi");
 
 %--------------------------
-%% k method
+
+% %% k method
+% % We need to recompute the matrices at each iteration
+% 
+% % Aerodynamic
+% M_inf = 0;
+% AIC = @(k_) dlmAIC_vec(x_p,y_p,k_,M_inf,c/2);
+% 
+% % Initialized reduced freq
+% dinvk = 0.1;
+% invk_ = dinvk:dinvk:20;
+% 
+% % Zero tolerance
+% tol = 1e-6;
+% 
+% % Initialize variables
+% m_ = nan(N,N,length(invk_));
+% l_ = nan(N,length(invk_));
+% Umin = [];
+% Umax = [];
+% 
+% % Loop through reduced frequencues
+% for i = 1:length(invk_)
+% 
+%     % Initilize timer
+%     tic
+% 
+% 
+% 
+%     % Effective matrices
+%     k = 1/invk-(i);
+%     Beff = M_red + rho_inf/2*S_red*(AIC(k)\(1i*c/(2*k)*It_red + c^2/(4*k^2)*Ix_red));
+% 
+%     %Eigenvalues
+%     [X, L] = eig(K_red,Beff);
+%     l = 1./diag(L);
+% 
+% 
+%     % Sort modes
+%     if i == 1
+%         l_(:,i) = l;
+%         m_(:,:,i) = X;
+%     else
+%         m2sort = 1:N;
+%         for j = 1:length(l)
+%             [~,jast] = min(abs(real(l_(j,i-1))-real(l(m2sort))) + abs(imag(l_(j,i-1))-imag(l(m2sort))));
+%             l_(j,i) = l(m2sort(jast));
+%             m_(:,j,i) = X(:,m2sort(jast));
+%             m2sort = setdiff(m2sort,m2sort(jast));
+%         end
+%     end
+% 
+%     %Check stability
+%     if max(imag(l_(:,i))) > tol && isempty(Umin)
+% 
+%         [~,jast] = max(imag(l_(:,i)));
+%         Umin = sqrt(1./real(l_(jmax,i-1)))*c(2*invk_(i-1));
+%         Umax = sqrt(1./real(l_(jmax,i)))*c(2*invk_(i-1));
+%     end
+% 
+%     % Print iteration time
+%     %ja tenim el toc, ha jo fare aixo
+% end
+% 
+% 
+% % Recover parameters
+% g_ = imag(l_)./real(l_);
+% w_ = sqrt(1./real(l_));
+% U_ = w_*c/2.*invk_;
+% 
+% % Plots
+% 
+%     figure(2)
+%     subplot(2,1,1)
+%     hold on; box on;
+%     plot(U_'/Ud,g_');
+%     xlabel("U/U_D");
+%     ylabel("g");
+% 
+%     subplot(2,1,2)
+%     hold on; box on;
+%     plot(U_'/Ud,w_'/(2*pi));
+%     xlabel("U/U_D");
+%     ylabel("w/2pi");
+
+%% k method (DLM) — based on your class notes
+
+% --------------------------
+% Aerodynamic AIC as function of k
+M_inf = 0;
+c_ref = 0.5*(c_root + ctip);
+
+AICfun = @(k_) AIC_builder(k_, x_p, y_p, N_panels, c_ref, lambda, y0, b, M_inf);
+
+
+% Sweep in invk = 1/k
+dinvk = 0.1;
+invk_ = dinvk:dinvk:20;        % invk = 1/k
+Nk    = length(invk_);
+
+tol = 1e-6;
+
+% Storage
+N = size(K_red,1);             % number of retained modes
+m_ = nan(N,N,Nk);              % eigenvectors (modal coordinates)
+l_ = nan(N,Nk);                % store lambda' = 1/lambda (complex)
+
+Umin = [];
+Umax = [];
+jmax = [];
+
+% Loop through reduced frequencies
+for i = 1:Nk
+
+    k = 1/invk_(i);
+
+    % Build AIC(k)
+    AICk = AICfun(k);
+
+    % Beff(k)
+    % Beff = M_red + (rho/2) * S_red * AIC^{-1} * ( i*c/(2k)*It_red + c^2/(4k^2)*Ix_red )
+    AUX  = (1i*c_ref/(2*k))*It_red + (c_ref^2/(4*k^2))*Ix_red;  % per no fallar parentesis
+    Beff = M_red + (rho_inf/2) * (S_red * (AICk \ AUX));
+
+    % Generalized eigenproblem: K_red * x = lambda * Beff * x
+    [X, L] = eig(K_red, Beff);
+    lam = diag(L);
+
+    % Store lambda' = 1/lambda
+    l = 1./lam;
+
+    % Mode tracking
+    if i == 1
+        l_(:,i)   = l;
+        m_(:,:,i) = X;
+    else
+        m2sort = 1:N;
+        for j = 1:N
+            % nearest in complex plane
+            [~, jast] = min( abs(real(l_(j,i-1)) - real(l(m2sort))) + ...
+                             abs(imag(l_(j,i-1)) - imag(l(m2sort))) );
+            l_(j,i)   = l(m2sort(jast));
+            m_(:,j,i) = X(:,m2sort(jast));
+            m2sort    = setdiff(m2sort, m2sort(jast));
+        end
+    end
+
+    % Check flutter bracket using g crossing (more correct than imag(l)>0)
+    if i > 1 && isempty(Umin)
+        g_prev = imag(l_(:,i-1)) ./ real(l_(:,i-1));
+        g_curr = imag(l_(:,i))   ./ real(l_(:,i));
+
+        % find a mode that crosses 0
+        cross = find(g_prev .* g_curr < 0, 1, "first");
+        if ~isempty(cross)
+            jmax = cross;
+
+            % Recover omega and U at the two points (from lambda')
+            w_prev = sqrt(1./real(l_(jmax,i-1)));
+            w_curr = sqrt(1./real(l_(jmax,i)));
+
+            U_prev = w_prev * c_ref/2 * invk_(i-1);
+            U_curr = w_curr * c_ref/2 * invk_(i);
+
+            Umin = U_prev;
+            Umax = U_curr;
+        end
+    end
+
+%     %Check stability
+%     if max(imag(l_(:,i))) > tol && isempty(Umin)
+% 
+%         [~,jast] = max(imag(l_(:,i)));
+%         Umin = sqrt(1./real(l_(jmax,i-1)))*c(2*invk_(i-1));
+%         Umax = sqrt(1./real(l_(jmax,i)))*c(2*invk_(i-1));
+%     end
+% 
+end
+
+% Recover parameters
+g_ = imag(l_)./real(l_);
+w_ = sqrt(1./real(l_));          % omega
+U_ = (w_*c_ref/2).*invk_;      % U = omega*c/2 * invk
+
+
+% Plots
+figure
+subplot(2,1,1)
+hold on; box on;
+plot(U_.'/Ud, g_.', 'LineWidth', 1.2);
+yline(0,'--');
+xlabel("U/U_D");
+ylabel("g");
+
+subplot(2,1,2)
+hold on; box on;
+plot(U_.'/Ud, (w_.'/(2*pi)), 'LineWidth', 1.2);
+xlabel("U/U_D");
+ylabel("\omega/2\pi [Hz]");
+
+
+
+% %% pk method
+% 
+% % Aerodynamic matrix
+% AICfun = @(k_) AIC_builder(k_, x_p, y_p, N_panels, c_ref, lambda, y0, b, M_inf);
+% 
+% % Init vel. vector
+% dU = 5;
+% U_ = dU:dU:1.6*Ud;
+% 
+% % Zero tol
+% tol = 1e6;
+% max_iter = 100;
+% 
+% % Init vars
+% m_ = nan(N,N,length(U_));
+% w_ = zeros(N,length(U_));
+% g_ = zeros(N,length(U_));
+% Umin = [];
+% Umax = [];
+% 
+% %Initial guess
+% w_(:,1) = fnat(i_nodes)*2*pi;
+% 
+% % Loop through vels
+% for i = 1:length(U_)
+% 
+%     % Initilize timer
+%     tic
+% 
+%     %Loop through modes
+%     for j = 1:N
+%         % Init conv vars
+%         iter = 0;
+%         res = tol;
+% 
+%         % Covergence loop
+%         while iter < max_iter && res >= tol
+%             % Update iter count
+%             iter = iter +1;
+% 
+%             %Estim red freq
+%             k = w_(j,i)*c/(2*U_(i));
+% 
+%             M_inf = U_(i)/a_inf;
+% 
+%             % Comput aerodin mat
+%             Aefff = rho_inf/2*S_red*(AIC(k,M_inf)\(Ix_red + 1i*2*k/c*It_red));
+% 
+%             Keff = K_red - U_(i)^2*Aeff;
+% 
+%             % Eigs
+%             I = eye(size(K_red));
+%             O = zeros(size(K_red));
+%             A = [Keff,O;O,I];
+%             B = [O, -M_red, I, O];
+%             [X,P] = eig(A,B);
+%             p = diag(P);
+% 
+%             % Closes elem
+%             [res,kast] = min(abs(real(p) - w_(j,i)*g_(j,i)) + abs(imag(p) - w_(j,i)));
+% 
+%             % Update the conv val
+%             w_(j,i) = imag(p(kast(1)));
+%             g_(j,i) = imag(p(kast(1)))/imag(p(kast(1)));
+%             m_(:,j,i) = X(1:N,kast(1));
+% 
+% 
+% 
+%         end
+% 
+%         % Print
+%         fprtintf("          Mode %i converged with %i iters",j,iter);
+% 
+% 
+%         % Check stab
+%         if i> 1 && g_(j,i-1) < tol && g_(j,i) > tol && isempty(Umin)
+%             Umin = U_(i-1);
+%             Umax = U_(i);
+%         end
+%     end
+% 
+%     % Update intial guess
+%     if i<length(U_)
+%         w_(:,i+1) = w_(:,i);
+%         g_(:,i+1) = g_(:,1);
+%     end
+% 
+% end
+% 
+% % Plots
+% 
+%     figure(3)
+%     subplot(2,1,1)
+%     hold on; box on;
+%     plot(U_'/Ud,g_'*w_c);
+%     xlabel("U/U_D");
+%     ylabel("g");
+% 
+%     subplot(2,1,2)
+%     hold on; box on;
+%     plot(U_'/Ud,w_'/(2*pi));
+%     xlabel("U/U_D");
+%     ylabel("w/2pi");
+
 
 
 
