@@ -1,13 +1,13 @@
-%% Parts reused from other codes
-clear
-close all;
+%% ES L'EXEMPLE DE CLASSE DE UD = 145 APROX (FLAT PLATE)
+
+clear; clc; close all
 
 c=0.75;
 b=2;
 h =0.01;
 xh = 0.6;
 y1 = 1.25;
-y2= 1.75;
+y2= 1.5;
 E = 70e9;
 nu = 0.3;
 rho = 2300;
@@ -97,14 +97,18 @@ for i = 1:Nx*Ny
     M_e = plateMass(a_e,b_e,h,rho);
     K_e = plateStiffness(a_e,b_e,h,E,nu);
     S_e = plateForce(a_e,b_e);
-    % Interpolation matrix collocation point
-    Ix_e = [
-            -9/(32*a_e), -9*b_e/64*a_e, 5/32,
-            9/(32*a_e), 9*b_e/64*a_e, -5/32,
-            9/(32*a_e), -9*b_e/64*a_e, 5/32,
-            -9/(32*a_e), 9*b_e/64*a_e, -5/32,
+    %Coeficients del professor (el profe tenia 5/32 al 2 i al 3, teoria posa 3/32)
+   Ix_e = [ -9/(32*a_e), -(9*b_e)/(64*a_e),  5/32, ...
+             9/(32*a_e),  (9*b_e)/(64*a_e), -3/32, ...
+             9/(32*a_e), -(9*b_e)/(64*a_e), -3/32, ...
+            -9/(32*a_e),  (9*b_e)/(64*a_e),  5/32 ];
 
-        ];
+   
+    % Collocation point interpolation
+    It_e = [5/64, 5*b_e/128, -3*a_e/64, ...
+            27/64, 27*b_e/128, 9*a_e/64, ...
+            27/64, -27*b_e/128, 9*a_e/64, ...
+            5/64, -5*b_e/128, -3*a_e/64];
 
 
     %Globsl indices vector
@@ -140,9 +144,7 @@ rho_inf = 1.25;
 A0 = rho_inf/2*S*(AIC\Ix);
 
 % Comput divergence speed
-[X_div,U_inf] = eigs(sparse(K(I_free,I_free)),sparse(A0(I_free,I_free)),10,"sm");
-
-
+[X_div,U_inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
 
 %Structural
 q_mod = zeros(N_dof,length(I_free));
@@ -150,38 +152,16 @@ q_mod = zeros(N_dof,length(I_free));
 [q_mod(I_free,:),w2] = eig(K_free,M_free);
 freq = sqrt(diag(w2))/(2*pi);
 
-% Reduced system
-i_modes = 1:4;
+% Reduced system 
+i_modes = 1:2; %Si ometem el primer mode baixa molt (144...)
 K_red = q_mod(:,i_modes)'*K*q_mod(:,i_modes);
 A0_red = q_mod(:,i_modes)'*A0*q_mod(:,i_modes);
 
 [X_div,U2_inf] = eig(K_red,A0_red);
 U_inf = sort(diag(sqrt(U2_inf)));
-U_d = U_inf(1);
 
 
-% Loop through the velocities
-
-
-for i = 1:lenght(U_inf)
-    % Eff stiffness matrix
-    K_eff = K_red - U_inf(i)^2*A0_red;
-
-    % Plate deformation
-    q(:,i) = q_mod(:,i_modes)*(K_eff\(U_inf(i)^2*q_mod(:,i_modes)'*A0*q_delta));
-
-    % Pressure distribution
-    delta_p(:,i) = 0.5*rho_inf*U_inf(i)^2*(AIC\Ix*(q(:,i) + q_delta)));
-    delta_p_0(:,i) = 0.5*rho_inf*U_inf(i)^2*(AIC\Ix*q_delta));
-end
-
-
-% Compute the total lift
-L = sum(S(1:3:end,:)*delta_p,1);
-L_0 = sum(S(1:3:end,:)*delta_p_0,1);
-
-
-%Plot
+U_d = U_inf(1) %DIVERGENCE SPEED
 
 
 

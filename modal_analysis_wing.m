@@ -44,32 +44,6 @@ for i = 1:Nx
 end
 
 
-figure; hold on; axis equal; grid on
-
-% Elements
-for e = 1:size(elem,1)
-    xy = nodes(elem(e,:),:);
-    plot([xy(:,1); xy(1,1)], [xy(:,2); xy(1,2)], 'k-');
-
-    % número d’element (al centre)
-    xc = mean(xy(:,1));
-    yc = mean(xy(:,2));
-    text(xc, yc, num2str(e), 'Color','r','FontSize',8,...
-        'HorizontalAlignment','center');
-end
-
-% Nodes
-plot(nodes(:,1), nodes(:,2), 'b.', 'MarkerSize', 12)
-
-for k = 1:size(nodes,1)
-    text(nodes(k,1), nodes(k,2), [' ' num2str(k)], ...
-        'Color','b','FontSize',8);
-end
-
-xlabel('x'); ylabel('y');
-title('Wing structural mesh (nodes + elements)');
-
-
 %% Ensamblatje matrius estructurals
 
 N_dof = 3*N_nodes;
@@ -89,17 +63,25 @@ for e = 1:N_panels
     %mid chord
     y_mid = 0.5*(nodes(elem(e,1),2) + nodes(elem(e,4),2));
     c_mid = c(1) * (1 - (1 - span.lambda) * (y_mid-y(1))/(span.b)); %corda cada perfil
-    h_e = 0.05 * c_mid;
+    
+    h_e = 0.05 * c_mid;  % h altura PODEM DEFINIRLA A UN ALTRE LLOC?
 
     M_e = plateMass(a_e,b_e,h_e,material.Density);
     K_e = plateStiffness(a_e,b_e,h_e,material.YoungModulus,material.Poisson);
     S_e = plateForce(a_e,b_e);
 
-    %Coeficients del professor
-    Ix_e = [-9/(32*a_e), -(9*b_e)/(64*a_e), 5/32, 9/(32*a_e), (9*b_e)/(64*a_e), -3/32, 9/(32*a_e), -(9*b_e)/(64*a_e), -3/32, -9/(32*a_e), (9*b_e)/(64*a_e), 5/32];
+    %Coeficients del professor (el profe tenia 5/32 al 2 i al 3, teoria posa 3/32)
+   Ix_e = [ -9/(32*a_e), -(9*b_e)/(64*a_e),  5/32, ...
+             9/(32*a_e),  (9*b_e)/(64*a_e), -3/32, ...
+             9/(32*a_e), -(9*b_e)/(64*a_e), -3/32, ...
+            -9/(32*a_e),  (9*b_e)/(64*a_e),  5/32 ];
 
+   
     % Collocation point interpolation
-    It_e = [5/64, 5*b_e/128, -3*a_e/64, 27/64, 27*b_e/128, 9*a_e/64, 27/64, -27*b_e/128, 9*a_e/64, 5/64, -5*b_e/128, -3*a_e/64];
+    It_e = [5/64, 5*b_e/128, -3*a_e/64, ...
+            27/64, 27*b_e/128, 9*a_e/64, ...
+            27/64, -27*b_e/128, 9*a_e/64, ...
+            5/64, -5*b_e/128, -3*a_e/64];
     
     % global DOF indices for the 4 nodes
     I_dof = [

@@ -3,7 +3,7 @@ function metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, N
 %% STEP 1: Section properties (del pefil) ('beam_properties')
 
 % Section properties
-geometry = "naca"; %Perfil Naca (ENUNCIAT)
+geometry = "naca"; %Perfil Naca (ENUNCIAT) "naca" "rectangle"
 param = [0.85,0.085];  %param(1)= chord (ENUNCIAT); param(2) = thickness (0.1*chord per al NACA 0010)
 resolution = 2; %Canvia el mallat del perfil (Figure 1)  
 nodesFile = ""; %EN BLANC (es per crear una malla des d'un fitxer)
@@ -91,7 +91,7 @@ M_inf = 0; % Mach = U_inf/a_inf; %0; %CAS INCOMPRESSIBLE;
 % Wref = alpha*ones(N_panels,1); PROJECTE 1
 %Wref = -1i*k*eta/(c/2)*ones(N_panels,1); 
 
-% AIC matrix coefficients
+% AIC matrix coefficients (com buildAIC.m)
 AIC = zeros(N_panels,N_panels);
 for i = 1:N_panels
     % Collocation point coordinates of panel "i"
@@ -123,27 +123,23 @@ I_free  = modes.freeDOFs;
 S_free  = modes.S_free;
 Phi_free= modes.Phi_free;
 
+A0 = 0.5*rho_inf * (S*(AIC\Ix));
+A0_free = A0(I_free,I_free);      % fins aquí hauria d'estar tot bé
 
-A0 = 0.5*rho_inf * (S*(AIC\Ix)); %This condition is the resultant of Wref = -Uinf*Ix*q when k=0????
-A0_free = A0(I_free,I_free);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Compute divergence speed(s): Kff x = U^2 A0ff x ????
-%it extract the eigenvectors and eigenvalues. We only want the eigenvalues U^2
-[q_free,U2] = eigs(sparse(K_free), sparse(A0_free), 10, "smallestabs");
-U = sort(sqrt(real(diag(U2))));
-Ud = U(1)        %% DIVERGENCE SPEED
-q_free = q_free; %Per a què serveix q_free?
-[~,U2] = eigs(sparse(K_free), sparse(A0_free), 10, "smallestabs");
-U = sort(sqrt(real(diag(U2)))); 
-Ud = U(1);
+%Ara ja corre codeinClass_day3 del profe, i la uD és la de la pagina 155
+%del pdf 4a. eNS DONA Ud = 148, mirar de basar-nos en allò per a fer aquest
+%tros del codi
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-
-%% 2. RISK OF FLUTTER (ANEM PER AQUÍ ARA)
+%% 2. RISK OF FLUTTER (NO ANEM PER AQUÍ ENCARA)
 %k = 0; % quasi-steady  %JA DEFINIT MÉS AMUNT
 %M_inf = 0; % Incompressibility %JA DEFINIT MÉS AMUNT
 
-Ud = 466; %AHIR DONAVA AIXÒ APROX I ARA DONA 0.00 + 0.77i....
+%Ud = 102; %Aprop de Ud = 100 ens donen uns grafics prou correctes
 
 %Reuse modal results from modal_analysis_wing
 q_mod = zeros(N_dof, size(modes.Phi_free,2));

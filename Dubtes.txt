@@ -19,6 +19,9 @@ for i = 1:N_panels
 
 
 
+PODEM DEFINIR h a un altre lloc?
+
+
 
 
 
