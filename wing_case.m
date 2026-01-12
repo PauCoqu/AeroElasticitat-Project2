@@ -1,16 +1,14 @@
-function metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0, i_modes)
+function metrics = wing_case(geometry, param, density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0, i_modes)
 
 %% STEP 1: Section properties (del pefil) ('beam_properties')
 
 % Section properties
-geometry = "naca"; %Perfil Naca (ENUNCIAT) "naca" "rectangle"
-param = [0.85,0.085];  %param(1)= chord (ENUNCIAT); param(2) = thickness (0.1*chord per al NACA 0010)
 resolution = 2; %Canvia el mallat del perfil (Figure 1)  
 nodesFile = ""; %EN BLANC (es per crear una malla des d'un fitxer)
 elemsFile = ""; %EN BLANC (es per crear una malla des d'un fitxer)
 
 % Obtain mesh data (true ploteja el grafic, false no)
-[nodes,material,elems,elemat] = getMeshData(geometry,param,resolution,density,youngModulus,poissonRatio,nodesFile,elemsFile,false);
+[nodes,material,elems,elemat] = getMeshData(geometry,param,resolution,density,youngModulus,poissonRatio,nodesFile,elemsFile,true);
 
 c_root = param(1); %corda root
 material.YoungModulus = youngModulus;
@@ -18,7 +16,7 @@ material.Poisson      = poissonRatio;
 material.Density      = density;
 
 % Compute section properties (%true ploteja el grafic, false no)
-section = getSectionProperties(nodes,material,elems,elemat,false);
+section = getSectionProperties(nodes,material,elems,elemat,true);
 
 % The warping displacement:
 scale =0; % de 0 a 1, deflexió del perfil
