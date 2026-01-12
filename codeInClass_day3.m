@@ -2,7 +2,7 @@
 
 clear; clc; close all
 
-c=0.75;
+c=1;
 b=2;
 h =0.01;
 xh = 0.6;
@@ -11,6 +11,7 @@ y2= 1.5;
 E = 70e9;
 nu = 0.3;
 rho = 2300;
+rho_inf = 1.25;
 
 Nx = 20;
 Ny = 40;
@@ -88,6 +89,7 @@ M = zeros(N_dof,N_dof);
 K = zeros(N_dof,N_dof);
 S = zeros(N_dof,Nx*Ny);
 Ix = zeros(Nx*Ny,N_dof);
+It = zeros(Nx*Ny,N_dof);
 
 for i = 1:Nx*Ny
     % Element size
@@ -124,6 +126,7 @@ for i = 1:Nx*Ny
     K(I_dof,I_dof) = K(I_dof,I_dof) + K_e;
     S(I_dof,i) = S(I_dof,i) +  S_e;
     Ix(i,I_dof) = Ix(i,I_dof) + Ix_e;
+    It(i,I_dof) = It(i,I_dof) + It_e;
 end
 
 %Boundary conditions
@@ -138,19 +141,21 @@ I_free = setdiff(1:N_dof,I_fix);
 M_free = M(I_free,I_free);
 K_free = K(I_free,I_free);
 S_free = S(I_free,:);
+Ix_free = Ix(:,I_free);
+It_free = It(:,I_free);
 
 % Aeroelastic coupling
-rho_inf = 1.25;
 A0 = rho_inf/2*S*(AIC\Ix);
 
 % Comput divergence speed
-[X_div,U_inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
+%[X_div,U_inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
 
 %Structural
 q_mod = zeros(N_dof,length(I_free));
 
 [q_mod(I_free,:),w2] = eig(K_free,M_free);
-freq = sqrt(diag(w2))/(2*pi);
+
+freq = sqrt(diag(w2))/(2*pi); %frequencia
 
 % Reduced system 
 i_modes = 1:2; %Si ometem el primer mode baixa molt (144...)
@@ -161,8 +166,104 @@ A0_red = q_mod(:,i_modes)'*A0*q_mod(:,i_modes);
 U_inf = sort(diag(sqrt(U2_inf)));
 
 
-U_d = U_inf(1) %DIVERGENCE SPEED
+Ud = U_inf(1) %DIVERGENCE SPEED
+
+%% AFEGIT A PARTIR D'AQUÍ
+%% 2. RISK OF FLUTTER (P METHOD)
+%k = 0; % quasi-steady  %JA DEFINIT MÉS AMUNT
+%M_inf = 0; % Incompressibility %JA DEFINIT MÉS AMUNT
+%Ud = 102; %Aprop de Ud = 100 ens donen uns grafics prou correctes
+
+% Select modes for p-method as we do a Model reduction
+c_root = c;
+i_modes = [1,2];
+N_modes = length(i_modes);
+% Previous reduced matrices
+% Phi = q_mod(:, i_modes); PREVIOUS ONE USED
+% M_red  = Phi.'*M*Phi; PREVIOUS ONE USED
+% K_red  = Phi.'*K*Phi; PREVIOUS ONE USED
+% S_red  = Phi.'*S; PREVIOUS ONE USED
+% Ix_red = Ix*Phi; PREVIOUS ONE USED
+% It_red = It*Phi; PREVIOUS ONE USED
+% A0_red = rho_inf/2*S_red*(AIC\Ix_red); PREVIOUS ONE USED
+% A1_red = -rho_inf/2*S_red*(AIC\It_red); PREVIOUS ONE USED
 
 
+% Reduced matrices
+Phi = q_mod(I_free, i_modes);   %use free part of the modes WHY?
+M_red  = Phi.'*M_free*Phi;
+K_red  = Phi.'*K_free*Phi;
+A0_free = rho_inf/2 * S_free * (AIC \ Ix_free);
+A1_free = -rho_inf/2 * S_free * (AIC \ It_free);
+A0_red = Phi.'*A0_free*Phi;
+A1_red = Phi.'*A1_free*Phi;
 
+% Initialize velocity vector
+dU = 5;
+U_ = 5:5:1.6*Ud;
+
+% Zero tolerance
+tol = 1e-6;
+
+% Initialize variables
+p_ = nan(2*N_modes,length(U_));
+m_ = nan(N_modes,2*N_modes,length(U_));
+U_min = [];
+U_max = [];
+
+% Loop through velocities
+for i = 1:length(U_)
+
+    % Effecftive matrices
+    Keff = K_red - U_(i)^2*A0_red;
+    Ceff = U_(i)*A1_red;
+    Meff = M_red;
+
+
+    % Generalized eigenvalues
+    O = zeros(size(Keff));
+    I = eye(size(Keff));
+    A = [Keff, O; O, I];
+    B = [-Ceff, -Meff; I, O];
+    [X,P] = eig(A,B);
+    p = diag(P);
+
+    % Sorting algorithm
+    if i == 1
+        p_(:,i) = p;
+        m_(:,:,i) = X(1:N_modes,:);
+    else
+        m2sort = 1:2*N_modes;
+        for j = 1:length(p)
+            [~,jmin] = min(abs(real(p_(j,i-1))-real(p(m2sort)))+ abs(imag(p_(j,i-1))-imag(p(m2sort))));
+
+            p_(j,i) = p(m2sort(jmin));
+            m_(:,j,i) = X(1:N_modes,m2sort(jmin));
+            m2sort = setdiff(m2sort,m2sort(jmin));
+
+        end
+    end
+
+    %Check stability
+    if i > 1 && max(real(p_(:,i))) > tol && isempty(U_min) % Check if the min vel is encounterd. If yes, the flutter speed is betweem this iteration and the past one
+    U_min = U_(i-1);
+    U_max = U_(i);
+    break;
+    end
+end
+
+% PLOTS
+
+figure
+subplot(2,1,1)
+hold on; box on;
+plot(U_/Ud, real(p_).*c_root./(2*U_), 'LineWidth', 2);
+xlabel("U_{\infty}/U_D");
+ylabel("p_R c / 2U");
+
+subplot(2,1,2)
+hold on; box on;
+plot(U_/Ud, imag(p_)/(2*pi), 'LineWidth', 2);
+xlabel("U_{\infty}/U_D");
+ylabel("p_I / 2\pi");
 

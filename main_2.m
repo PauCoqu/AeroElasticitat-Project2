@@ -27,4 +27,7 @@ U_inf = 27 ;%[27 110 130]; %[m/s]  (aprox 100km/h)
 Nx = 20; %Numero d'elements
 Ny = 20;
 
-metrics = wing_case(density,youngModulus,poissonRatio,b,lambda,Nx, Ny,U_inf,y0);
+%Modal reduction
+i_modes = [1,2,3,4];
+
+metrics = wing_case(density,youngModulus,poissonRatio,b,lambda,Nx, Ny,U_inf,y0,i_modes);

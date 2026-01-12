@@ -1,4 +1,4 @@
-function metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0)
+function metrics = wing_case(density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0, i_modes)
 
 %% STEP 1: Section properties (del pefil) ('beam_properties')
 
@@ -132,6 +132,8 @@ A0_free = A0(I_free,I_free);      % fins aquí hauria d'estar tot bé
 %del pdf 4a. eNS DONA Ud = 148, mirar de basar-nos en allò per a fer aquest
 %tros del codi
 
+Ud = 148; %per seguir amb el codi
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -146,7 +148,6 @@ q_mod = zeros(N_dof, size(modes.Phi_free,2));
 q_mod(I_free,:) = Phi_free;
 
 % Select modes for p-method as we do a Model reduction
-i_modes = [1,2,3,5];
 N_modes = length(i_modes);
 Phi = q_mod(:, i_modes);
 
@@ -161,12 +162,10 @@ A0_red = rho_inf/2*S_red*(AIC\Ix_red);
 A1_red = -rho_inf/2*S_red*(AIC\It_red);
 
 % Initialize velocity vector
-dU = 5;
-U_ = dU:dU:1.6*Ud;
 U_ = 5:5:1.6*Ud;
 
 % Zero tolerance
-tol = 1e-6;
+tol = 1e10;
 
 % Initialize variables
 p_ = nan(2*N_modes,length(U_));
@@ -220,23 +219,36 @@ end
 figure
 subplot(2,1,1)
 hold on; box on;
-plot(U_/Ud,real(p_).*c_root./(2*U_));
-xlabel("U/U_D");
-plot(U_./Ud,real(p_).*c_root./(2*U_));
+plot(U_/Ud, real(p_).*c_root./(2*U_), 'LineWidth', 2);
+yline(0,'k--')
 xlabel("U_{\infty}/U_D");
-ylabel("p_Rc/2U");
+ylabel("p_R c / 2U");
 
 subplot(2,1,2)
 hold on; box on;
-plot(U_/Ud,imag(p_).*c_root./(2*pi));
-xlabel("U/U_D");
-plot(U_./Ud,imag(p_).*c_root./(2*pi));
+plot(U_/Ud, imag(p_)/(2*pi), 'LineWidth', 2);
+yline(0,'k--')
 xlabel("U_{\infty}/U_D");
-ylabel("p_I/2\pi");
+ylabel("p_I / 2\pi");
+
+disp('--- ON CREUA EL 0 ---');
+disp(' U/Ud  | part real de p ');
+disp([U_/Ud; max(real(p_),[],1)].')  % U/Ud vs max Re(p)
 
 %--------------------------
 %% k method
 Beff = M ;
+
+
+
+
+
+
+
+
+
+
+
 
 
 
