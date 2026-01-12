@@ -130,7 +130,7 @@ A0_free = A0(I_free,I_free);      % fins aquí hauria d'estar tot bé
 %del pdf 4a. eNS DONA Ud = 148, mirar de basar-nos en allò per a fer aquest
 %tros del codi
 
-Ud = 148; %per seguir amb el codi
+Ud = 500; %per seguir amb el codi
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

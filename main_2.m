@@ -29,7 +29,7 @@ geometry = "spars"; %Perfil Naca (ENUNCIAT) "naca"
 %(x2,t2) = (lenght,thickness) = (0.52,0.02)   ->  spar 2
 
          % p1   p2    p3   x1   t1   x2   t2 
-param = [0.85,0.085,0.015,0.22,0.02,0.52,0.02];  
+param = [0.85,0.085,0.015,0.22,0.02,0.52,0.02]; 
 
 alpha_deg = 4; % Angle d'atac 
 U_inf = 27 ;%[27 110 130]; %[m/s]  (aprox 100km/h)

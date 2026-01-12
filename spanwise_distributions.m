@@ -48,4 +48,18 @@ span.lambda = lambda;
 span.AR     = AR;
 span.dx_sc  = dx_sc; % needed distance to obtain a shear center line perpendicular to plane xz.
 
+
+fprintf('\n=== SECTION PROPERTIES ===\n');
+fprintf('Area A              = %.6e m^2\n', section.A);
+fprintf('Mass per length m   = %.6f kg/m\n', material.Density * section.A);
+fprintf('Ixx (bending)       = %.6e m^4\n', section.Ixx);
+fprintf('Iyy                 = %.6e m^4\n', section.Iyy);
+fprintf('Isc (torsion ref)   = %.6e m^4\n', section.Isc);
+fprintf('kt (torsion factor) = %.6f (-)\n', section.kt);
+fprintf('J = kt*Isc          = %.6e m^4\n', section.kt * section.Isc);
+fprintf('x_cm                = %.6f m\n', section.xcm(1));
+fprintf('x_sc                = %.6f m\n', section.xsc(1));
+fprintf('d = x_cm - x_sc     = %.6e m\n', section.xcm(1) - section.xsc(1));
+fprintf('===============================\n\n');
+
 end
