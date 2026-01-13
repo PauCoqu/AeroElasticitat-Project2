@@ -57,3 +57,44 @@ end
 xlabel('x'); ylabel('y');
 title('Wing structural mesh (nodes + elements)');
 %%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%% CLASSIFICACIÓ UD %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute divergence speed with ALL MODES
+[X_div,U_2inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
+
+lambda = diag(U_2inf);  %extra         % lambda = U^2
+tol = 1e-8 * max(1, max(abs(lambda)));
+valid = abs(imag(lambda)) < tol & real(lambda) > 0;
+U_inf2 = sort(sqrt(real(lambda(valid))));
+
+U_inf_ALEX = sort(diag(sqrt(U_2inf))) %CREC QUE SOLAPAVEM U_inf 
+Ud_allmodes = U_inf2(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
+
+
+% Compute divergence speed with REDUCED SYSTEM (i_modes)
+
+q_mod = zeros(N_dof,length(I_free));
+[q_mod(I_free,:),w2] = eig(K_free,M_free);
+freq = sqrt(diag(w2))/(2*pi); %frequencia 
+K_red = q_mod(:,i_modes)'*K*q_mod(:,i_modes);
+A0_red = q_mod(:,i_modes)'*A0*q_mod(:,i_modes);
+
+[X_div,U_3inf] = eig(K_red,A0_red);
+
+lambda2 = diag(U_3inf);  %extra         % lambda = U^2
+tol = 1e-8 * max(1, max(abs(lambda2)));
+valid = abs(imag(lambda2)) < tol & real(lambda2) > 0;
+U_inf3 = sort(sqrt(real(lambda2(valid))));
+
+%U_inf3 = sort(diag(sqrt(U_3inf)));
+
+Ud_reduced = U_inf3(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

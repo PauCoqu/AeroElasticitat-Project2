@@ -8,7 +8,7 @@ nodesFile = ""; %EN BLANC (es per crear una malla des d'un fitxer)
 elemsFile = ""; %EN BLANC (es per crear una malla des d'un fitxer)
 
 % Obtain mesh data (true ploteja el grafic, false no)
-[nodes,material,elems,elemat] = getMeshData(geometry,param,resolution,density,youngModulus,poissonRatio,nodesFile,elemsFile,true);
+[nodes,material,elems,elemat] = getMeshData(geometry,param,resolution,density,youngModulus,poissonRatio,nodesFile,elemsFile,false);
 
 c_root = param(1); %corda root
 material.YoungModulus = youngModulus;
@@ -16,7 +16,7 @@ material.Poisson      = poissonRatio;
 material.Density      = density;
 
 % Compute section properties (%true ploteja el grafic, false no)
-section = getSectionProperties(nodes,material,elems,elemat,true);
+section = getSectionProperties(nodes,material,elems,elemat,false);
 
 % The warping displacement:
 scale =0; % de 0 a 1, deflexió del perfil
@@ -108,6 +108,8 @@ end
 %% 1. DIVERGENCE SPEEED
 % It can be done with the DOFs or with an approximation onto some structural modes (which need modal_analysis_wing.m)
 % Ho farem amb tots els DOFs primer
+% % Ud -> 1a inestabilitat -> det(K - U^2*A0)=0 -> K*phi = U^2*A0*phi -> Ud = sqrt(menor U^2 real i positiu)
+
 
 %Redefinim totes les variables guardades al modal_analysis_wing
 M       = modes.M;
@@ -126,20 +128,47 @@ A0_free = A0(I_free,I_free);      % fins aquí hauria d'estar tot bé
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%Ara ja corre codeinClass_day3 del profe, i la uD és la de la pagina 155
-%del pdf 4a. eNS DONA Ud = 148, mirar de basar-nos en allò per a fer aquest
-%tros del codi
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute divergence speed with ALL MODES
+[X_div,U_2inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
 
-Ud = 500; %per seguir amb el codi
+lambda = diag(U_2inf);  %extra         % lambda = U^2
+tol = 1e-8 * max(1, max(abs(lambda)));
+valid = abs(imag(lambda)) < tol & real(lambda) > 0;
+U_inf2 = sort(sqrt(real(lambda(valid))));
 
+U_inf_ALEX = sort(diag(sqrt(U_2inf))) %CREC QUE SOLAPAVEM U_inf 
+Ud_allmodes = U_inf2(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
+
+
+% Compute divergence speed with REDUCED SYSTEM (i_modes)
+
+q_mod = zeros(N_dof,length(I_free));
+[q_mod(I_free,:),w2] = eig(K_free,M_free);
+freq = sqrt(diag(w2))/(2*pi); %frequencia 
+K_red = q_mod(:,i_modes)'*K*q_mod(:,i_modes);
+A0_red = q_mod(:,i_modes)'*A0*q_mod(:,i_modes);
+
+[X_div,U_3inf] = eig(K_red,A0_red);
+
+lambda2 = diag(U_3inf);  %extra         % lambda = U^2
+tol = 1e-8 * max(1, max(abs(lambda2)));
+valid = abs(imag(lambda2)) < tol & real(lambda2) > 0;
+U_inf3 = sort(sqrt(real(lambda2(valid))));
+
+%U_inf3 = sort(diag(sqrt(U_3inf)));
+
+Ud_reduced = U_inf3(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Ud = Ud_allmodes
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %% 2. RISK OF FLUTTER (NO ANEM PER AQUÍ ENCARA)
 %k = 0; % quasi-steady  %JA DEFINIT MÉS AMUNT
 %M_inf = 0; % Incompressibility %JA DEFINIT MÉS AMUNT
-
-%Ud = 102; %Aprop de Ud = 100 ens donen uns grafics prou correctes
 
 %Reuse modal results from modal_analysis_wing
 q_mod = zeros(N_dof, size(modes.Phi_free,2));
@@ -161,9 +190,6 @@ A1_red = -rho_inf/2*S_red*(AIC\It_red);
 
 % Initialize velocity vector
 U_ = 5:5:1.6*Ud;
-
-% Zero tolerance
-tol = 1e10;
 
 % Initialize variables
 p_ = nan(2*N_modes,length(U_));
@@ -205,10 +231,13 @@ for i = 1:length(U_)
     end
 
     %Check stability
-    if i > 1 && max(real(p_(:,i))) > tol && isempty(U_min) % Check if the min vel is encounterd. If yes, the flutter speed is betweem this iteration and the past one
-    U_min = U_(i-1);
-    U_max = U_(i);
-    break;
+    if i > 1
+    r_prev = max(real(p_(:,i-1)));
+    if isempty(U_min) && (r_prev <= 0) && (max(real(p_(:,i))) > 0)
+        disp(' Creuem el 0 entre U_min i U_max ');
+        U_min = U_(i-1)
+        U_max = U_(i)
+    end
     end
 end
 
@@ -229,9 +258,11 @@ yline(0,'k--')
 xlabel("U_{\infty}/U_D");
 ylabel("p_I / 2\pi");
 
-disp('--- ON CREUA EL 0 ---');
-disp(' U/Ud  | part real de p ');
-disp([U_/Ud; max(real(p_),[],1)].')  % U/Ud vs max Re(p)
+%% FALTA AFEGIR LLEGENDA
+
+%disp('--- ON CREUA EL 0 ---');
+%disp(' U/Ud  | part real de p ');
+%disp([U_/Ud; max(real(p_),[],1)].')  % U/Ud vs max Re(p)
 
 %--------------------------
 %% k method

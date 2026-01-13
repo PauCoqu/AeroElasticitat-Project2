@@ -43,7 +43,6 @@ for i = 1:Nx
     end
 end
 
-
 %% Ensamblatje matrius estructurals
 
 N_dof = 3*N_nodes;

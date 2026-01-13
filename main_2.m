@@ -21,7 +21,7 @@ b = 12; %envergadura d'UNA ala = span
 lambda = 0.3;  %taper ratio 
 
 %Section properties (pel beam_section_properties)
-geometry = "spars"; %Perfil Naca (ENUNCIAT) "naca"
+geometry = "naca"; %Perfil Naca (ENUNCIAT) "naca"
 
 %param(1)= chord ; param(2) = thickness (0.1*chord per al NACA 0010)
 %param(3) = skin thickness
@@ -29,7 +29,7 @@ geometry = "spars"; %Perfil Naca (ENUNCIAT) "naca"
 %(x2,t2) = (lenght,thickness) = (0.52,0.02)   ->  spar 2
 
          % p1   p2    p3   x1   t1   x2   t2 
-param = [0.85,0.085,0.015,0.22,0.02,0.52,0.02]; 
+param = [0.85,0.085];%,0.015,0.22,0.02,0.52,0.02]; 
 
 alpha_deg = 4; % Angle d'atac 
 U_inf = 27 ;%[27 110 130]; %[m/s]  (aprox 100km/h)
@@ -39,6 +39,6 @@ Nx = 20; %Numero d'elements
 Ny = 20;
 
 %Modal reduction
-i_modes = [1,2,3,4];
+i_modes = [1:4];
 
 metrics = wing_case(geometry, param, density,youngModulus,poissonRatio,b,lambda,Nx, Ny,U_inf,y0,i_modes);

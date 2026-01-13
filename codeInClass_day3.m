@@ -147,32 +147,30 @@ It_free = It(:,I_free);
 % Aeroelastic coupling
 A0 = rho_inf/2*S*(AIC\Ix);
 
-% Comput divergence speed
-%[X_div,U_inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
+% Comput divergence speed ALL MODES
+[X_div,U2_inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
+U_inf_ALLMODES = sort(diag(sqrt(U2_inf)));
+Ud_allmodes = U_inf_ALLMODES(1) %DIVERGENCE SPEED
 
 %Structural
 q_mod = zeros(N_dof,length(I_free));
-
 [q_mod(I_free,:),w2] = eig(K_free,M_free);
-
 freq = sqrt(diag(w2))/(2*pi); %frequencia
 
 % Reduced system 
-i_modes = 1:2; %Si ometem el primer mode baixa molt (144...)
+i_modes = 1:3; %Si ometem el primer mode baixa molt (144...)
 K_red = q_mod(:,i_modes)'*K*q_mod(:,i_modes);
 A0_red = q_mod(:,i_modes)'*A0*q_mod(:,i_modes);
 
-[X_div,U2_inf] = eig(K_red,A0_red);
-U_inf = sort(diag(sqrt(U2_inf)));
-
-
-Ud = U_inf(1) %DIVERGENCE SPEED
+[X_div,U2_inf2] = eig(K_red,A0_red);
+U_inf_REDUCED = sort(diag(sqrt(U2_inf2)));
+Ud_reduced = U_inf_REDUCED(1) %DIVERGENCE SPEED
 
 %% AFEGIT A PARTIR D'AQUÍ
 %% 2. RISK OF FLUTTER (P METHOD)
 %k = 0; % quasi-steady  %JA DEFINIT MÉS AMUNT
 %M_inf = 0; % Incompressibility %JA DEFINIT MÉS AMUNT
-%Ud = 102; %Aprop de Ud = 100 ens donen uns grafics prou correctes
+Ud = Ud_allmodes; %Aprop de Ud = 100 ens donen uns grafics prou correctes
 
 % Select modes for p-method as we do a Model reduction
 c_root = c;
@@ -244,12 +242,13 @@ for i = 1:length(U_)
         end
     end
 
-    %Check stability
-    if i > 1 && max(real(p_(:,i))) > tol && isempty(U_min) % Check if the min vel is encounterd. If yes, the flutter speed is betweem this iteration and the past one
-    U_min = U_(i-1);
-    U_max = U_(i);
-    break;
+if i > 1
+    r_prev = max(real(p_(:,i-1)));
+    if isempty(U_min) && (r_prev <= 0) && (max(real(p_(:,i))) > 0)
+        U_min = U_(i-1)
+        U_max = U_(i)
     end
+end
 end
 
 % PLOTS
