@@ -83,7 +83,7 @@ Hd = [0.1, 0];
 %% Loop through velocities and frequencies
 
 %% Velocity vector
-U_inf = 100:10:120;
+U_inf = 5:10:150; %desde 5 a 150 de 10 en 10
 
 %% Frequency (Hz)
 %f = [2, logspace(-5,0,5), 1.2:0.2:20];
@@ -136,9 +136,9 @@ for i = 1:length(U_inf)
 end
 
 % RMS values
-g_ = squeeze(sqrt(trapz(w', Phi_gg, 1)));
-a_ = squeeze(sqrt(trapz(w', Phi_aa, 1)));
-s_ = squeeze(sqrt(trapz(w', Phi_ss, 1)));
+g_ = squeeze(sqrt(trapz(f', Phi_gg, 1)));
+a_ = squeeze(sqrt(trapz(f', Phi_aa, 1)));
+s_ = squeeze(sqrt(trapz(f', Phi_ss, 1)));
 disp([U_inf(:), a_(:), s_(:)])
 
 %% PLOTS
