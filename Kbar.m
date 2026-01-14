@@ -13,7 +13,8 @@ if abs(ry)<tol
         u1 = big;
     end
 else
-    u1 = (M*sqrt(rx^2+(1-M^2)*ry^2)-rx)/(abs(ry)*(1-M^2));
+    %u1 = (M*sqrt(rx^2+(1-M^2)*ry^2)-rx)/(abs(ry)*(1-M^2));
+    u1 = (M.*sqrt(rx.^2+(1-M.^2).*ry.^2)-rx)./(abs(ry).*(1-M.^2));
 end
 
 % Parameters for integral quadrature -> Page 89 in Ref. [1]
@@ -34,10 +35,12 @@ a_ = [
 ];
 
 % Evaluation of J1 integral (only valid for u1>0) -> Eq. (274) in Ref. [1]
-J1 = @(u1,k1) sum(a_.*exp(-n_*c_*u1)./(n_.^2*c_^2+k1^2).*(n_*c_-1i*k1));
+J1 = @(u1,k1) sum(a_ .*exp(-(n_.*c_).*u1)./((n_.^2).*(c_.^2) + (k1.^2)).*( (n_.*c_) - 1i*k1));
+%J1 = @(u1,k1) sum(a_.*exp(-n_*c_*u1)./(n_.^2*c_^2+k1^2).*(n_*c_-1i*k1));
 
 % Evaluation of I1 integral -> Eq. (271) in Ref. [1]
-I1_fun = @(u1,k1) exp(-1i*k1*u1)*(1-u1/sqrt(1+u1^2)+(-1i*k1*J1(u1,k1)));
+I1_fun = @(u1,k1) exp(-1i*(k1.*u1)) .* ( 1 - u1./sqrt(1 + u1.^2) + (-1i*(k1.*J1(u1,k1))) );
+%I1_fun = @(u1,k1) exp(-1i*k1*u1)*(1-u1/sqrt(1+u1^2)+(-1i*k1*J1(u1,k1)));
 if u1>=0
     if u1>big
         I1 = 0;
@@ -53,12 +56,17 @@ else % For u1<0 -> Eq. (275) in Ref. [1]
 end
 
 % Evaluation of the K1 parameter -> Eq. (278) in Ref. [1]
-if u1>=big || u1<=-big
+%if u1>=big || u1<=-big
+if any(u1 >= big) || any(u1 <= -big)
     K1 = -I1;
 else
-    K1 = -I1-M*abs(ry)/sqrt(rx^2+(1-M^2)*ry^2)*exp(-1i*k1*u1)/sqrt(1+u1^2);
+    %K1 = -I1-M*abs(ry)/sqrt(rx^2+(1-M^2)*ry^2)*exp(-1i*k1*u1)/sqrt(1+u1^2);
+    K1 = -I1-M.*abs(ry)./sqrt(rx.^2+(1-M.^2).*ry.^2).*exp(-1i*(k1.*u1))./sqrt(1+u1.^2);
 end
 
 % Evaluation of Kbar -> Eq. (285) in Ref. [1] 
-res = K1*exp(-1i*k*rx); 
+%res = K1*exp(-1i*k*rx);
+res = K1 .* exp(-1i*(k.*rx));
+res = sum(res,'all');
+
 end

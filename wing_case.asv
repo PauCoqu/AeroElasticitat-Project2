@@ -292,21 +292,11 @@ sigma_g = 1;% [m/s]
 k0 = 10^(-28/9);
 
 % Speed sweep for gust analysis
-U_g = 5:5:Ud; % [m/s] 
+U_g = 5:5:Ud;                    % [m/s] (you can change step, but keep variable names elsewhere untouched)
 
-% CAS RAPID (2 velocitats x 2 frequencies) ---
-U_g = [10, 30];  
-f   = [0.5, 5];  %(DO NOT include 0)
-w   = 2*pi*f;    % rad/s
-
-% Optional: print sizes once
-fprintf('\n--- SMOKE TEST ---\n');
-fprintf('N_panels = %d\n', size(x_p,1));
-fprintf('N_dof    = %d\n', N_dof);
-fprintf('N_modes  = %d\n', size(Phi,2));
-fprintf('Speeds   = [%g %g] m/s\n', U_g(1), U_g(2));
-fprintf('Freqs    = [%g %g] Hz\n', f(1), f(2));
-fprintf('-------------------\n\n');
+% Frequency grid (Hz) for PSDs (keep moderate to avoid huge runtime)
+f = [0, logspace(-3, 1.3, 80)];  % up to ~20 Hz
+w = 2*pi*f;                      % rad/s
 
 % Reduced structural matrices already defined for flutter block:
 %   M_red, K_red, Phi (full DOFs basis for selected modes)
@@ -347,7 +337,7 @@ for iU = 1:length(U_g)
 
         % Build AIC at this k (unsteady)
         % (reuse your exact AIC logic, but now inside loop)
-        AICk = buildAIC(x_p, y_p, c_root, lambda, y0, b, M_inf, k);
+        AICk = buildAIC_wing(x_p, y_p, c_root, lambda, y0, b, M_inf, k);
 
         % Aerodynamic "effective" matrix (same idea as professor code)
         % Aeff_full = rho/2 * S * (AIC \ ( i*k*2/c * It + Ix ))
@@ -400,107 +390,11 @@ s_RMS = sqrt(trapz(w, Phi_ss, 1));  % RMS sigma_max
 
 % 1) PSD curves (pick a few speeds)
 U_plot = [U_g(1), U_g(round(end/3)), U_g(round(2*end/3)), U_g(end)];
-[~,idxU] = ismember(U_plot, U_g);
+[~,idxU] = ismember(U_p_
 
-figure; hold on; box on;
-for kU = idxU(idxU>0)
-    plot(f, Phi_aa(:,kU), 'LineWidth', 1.5);
-end
-set(gca,'XScale','log','YScale','log');
-xlabel('f [Hz]'); ylabel('\Phi_{\ddot{\eta}\ddot{\eta}}  [(m/s^2)^2/(rad/s)]');
-title('Tip acceleration PSD (selected U_\infty)');
-legend(arrayfun(@(U) sprintf('U=%.0f m/s',U), U_plot, 'UniformOutput', false), 'Location','best');
 
-figure; hold on; box on;
-for kU = idxU(idxU>0)
-    plot(f, Phi_ss(:,kU), 'LineWidth', 1.5);
-end
-set(gca,'XScale','log','YScale','log');
-xlabel('f [Hz]'); ylabel('\Phi_{\sigma\sigma}  [Pa^2/(rad/s)]');
-title('Max stress PSD (selected U_\infty)');
-legend(arrayfun(@(U) sprintf('U=%.0f m/s',U), U_plot, 'UniformOutput', false), 'Location','best');
 
-% 2) RMS vs speed
-figure; hold on; box on;
-plot(U_g, a_RMS, 'LineWidth', 2);
-xlabel('U_\infty [m/s]'); ylabel('\ddot{\eta}_{RMS} [m/s^2]');
-title('Tip acceleration RMS vs U_\infty');
-
-figure; hold on; box on;
-plot(U_g, s_RMS, 'LineWidth', 2);
-xlabel('U_\infty [m/s]'); ylabel('\sigma_{max,RMS} [Pa]');
-title('Max stress RMS vs U_\infty');
-
-%% --------------------------
-function Phi_k = gustPSD_k(k, sigma_g, k0)
-% Piecewise PSD given by the project statement in reduced frequency k.
-% Output has units [(m/s)^2] per "unit k" (your subsequent dk/dw conversion handles omega-domain).
-Phi_k = 0*k;
-if k < k0
-    Phi_k = sigma_g^2 * 10^(8/3);
-else
-    Phi_k = sigma_g^2 * 10^(-8/3) * k^(-12/7);
-end
-end
-
-function sigma_max = sigmaMax_fromResponse(q_full, nodes, span, material)
-% Compute sigma_max over nodes using the project statement formula based on
-% spanwise derivatives of zeta(y) and theta(y). We approximate:
-% - zeta(y): chordwise average of zeta DOF at each span station
-% - theta(y): chordwise average of theta DOF at each span station
-% - d/dy via finite differences
-% Then evaluate sigma(x,y) at each node with:
-% sigma = sqrt( (E*h/2 * dzeta_dy)^2 + (sqrt(3)*G*r_sc * dtheta_dy)^2 )
-
-E = material.YoungModulus;
-nu = material.Poisson;
-G = E/(2*(1+nu));
-
-y = span.y(:);
-c_y = span.c_y(:);
-
-% Shear center line x (aligned)
-x_sc_line = span.x_sc(1);
-
-% Extract DOFs at nodes
-N_nodes = size(nodes,1);
-eta   = q_full(1:3:end);
-zeta  = q_full(2:3:end);
-theta = q_full(3:3:end);
-
-% For each span station (y(j)), average zeta and theta across chord nodes
-zeta_y  = zeros(length(y),1);
-theta_y = zeros(length(y),1);
-for j = 1:length(y)
-    idx = find(abs(nodes(:,2) - y(j)) < 1e-12);
-    zeta_y(j)  = mean(zeta(idx));
-    theta_y(j) = mean(theta(idx));
-end
-
-% Spanwise derivatives
-dzeta_dy  = gradient(zeta_y, y);
-dtheta_dy = gradient(theta_y, y);
-
-% Evaluate sigma at each node
-sigma_node = zeros(N_nodes,1);
-for n = 1:N_nodes
-    % station index in y-grid
-    [~,j] = min(abs(y - nodes(n,2)));
-
-    % thickness model consistent with your plate element definition: h = 0.05*c(y)
-    h_local = 0.05 * c_y(j);
-
-    % distance to shear center in x
-    r_sc = abs(nodes(n,1) - x_sc_line);
-
-    term_bend = (E * h_local/2) * dzeta_dy(j);
-    term_tors = (sqrt(3) * G * r_sc) * dtheta_dy(j);
-
-    sigma_node(n) = sqrt( abs(term_bend)^2 + abs(term_tors)^2 );
-end
-
-sigma_max = max(sigma_node);
-end
+%%%%%%%%%%%%%%%%%%%%%
 
 
 

@@ -17,19 +17,21 @@ sinL_k = (y_panel(2)-y_panel(1))/b/b_k;
 
 % Compute A coefficients
 A_0 = Kbar_0;
-A_1 = (Kbar_2-Kbar_1)/b_k;
-A_2 = (2*Kbar_1-4*Kbar_0+2*Kbar_2)/b_k^2;
+A_1 = (Kbar_2-Kbar_1)./b_k;
+A_2 = (2*Kbar_1-4*Kbar_0+2*Kbar_2)./(b_k.^2);
 
 % Compute B coefficients
-fact0 = 4*c_k*b_k/(4*ry_0^2-b_k^2*sinL_k^2);
-fact1 = log((b_k*sinL_k-2*ry_0)^2/(b_k*sinL_k+2*ry_0)^2);
-B_0 = fact0*A_0;
-B_1 = (c_k/(2*sinL_k^2))*fact1*A_1 ...
-    + (ry_0/sinL_k)*fact0*A_1;
-B_2 = (c_k*b_k/sinL_k^2)*A_2 ... % hi havia un +
-    + (ry_0*c_k/sinL_k^3)*fact1*A_2 ...
-    + (ry_0^2/sinL_k^2)*fact0*A_2;
+fact0 = 4*c_k.*b_k./(4.*ry_0.^2-b_k.^2.*sinL_k.^2);
+fact1 = log((b_k.*sinL_k-2.*ry_0).^2./(b_k.*sinL_k+2.*ry_0).^2);
+B_0 = fact0.*A_0;
+B_1 = (c_k./(2.*sinL_k^2)).*fact1.*A_1 ...
+    + (ry_0./sinL_k).*fact0.*A_1;
+B_2 = (c_k.*b_k./sinL_k.^2).*A_2 ... % hi havia un +
+    + (ry_0.*c_k./sinL_k.^3).*fact1.*A_2 ...
+    + (ry_0.^2./sinL_k.^2).*fact0.*A_2;
 
 % Compute induced velocity
-res = -Cp/(8*pi)*(B_0 + B_1 + B_2);
+res = -Cp./(8.*pi).*(B_0 + B_1 + B_2);
+res = sum(res,'all');
+
 end
