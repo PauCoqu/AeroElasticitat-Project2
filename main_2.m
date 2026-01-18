@@ -18,7 +18,7 @@ y0 = 0.34;
 
 % VALORS DE DISSENY FINAL (Projecte 1)
 b = 12; %envergadura d'UNA ala = span 
-lambda = 0.3;  %taper ratio 
+lambda = 0.4;  %taper ratio 
 
 %Section properties (pel beam_section_properties)
 geometry = "spars"; %Perfil Naca (ENUNCIAT) "naca"
@@ -39,6 +39,6 @@ Nx = 10; %Numero d'elements
 Ny = 10;
 
 %Modal reduction
-i_modes = [1:4];
+i_modes = [1:20];
 
-metrics = wing_case(geometry, param, density,youngModulus,poissonRatio,b,lambda,Nx, Ny,U_inf,y0,i_modes);
+metrics = wing_case(geometry, param, density,youngModulus,poissonRatio,b,lambda,Nx, Ny,U_inf,y0,i_modes,alpha_deg);

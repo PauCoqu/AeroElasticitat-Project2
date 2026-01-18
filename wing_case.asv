@@ -285,131 +285,179 @@ figure; hold on; box on;
 
 
 %--------------------------
-%% 3. GUSTS 
+%% GUSTS    
 
 % Gust data (enunciat)
-sigma_g = 1;% [m/s]
+sigma_g = 1; % [m/s]
 k0 = 10^(-28/9);
 
 % Speed sweep for gust analysis
-U_g = 5:5:Ud;                    % [m/s] (you can change step, but keep variable names elsewhere untouched)
+U_g = 5:15:Ud*1.4; % [m/s] up to divergence
 
-% Frequency grid (Hz) for PSDs (keep moderate to avoid huge runtime)
-f = [0, logspace(-3, 1.3, 80)];  % up to ~20 Hz
-w = 2*pi*f;                      % rad/s
+% Frequency vector (igual q a classe, logspace per low freqs, then linear)
+f = [0, logspace(-5,0,50), 1.2:0.2:20];
+w = 2*pi*f;
 
-% Reduced structural matrices already defined for flutter block:
-%   M_red, K_red, Phi (full DOFs basis for selected modes)
-% If you don't have damping, set C_red = 0
+% C_red = 0
 C_red = zeros(size(M_red));
 
-% --- Measurement 1: tip vertical acceleration at shear center ---
-% Pick tip node closest to shear-center line (after your dx shift, SC line is constant).
-x_sc_line = span.x_sc(1);               % shear center x at root (after your alignment, SC line is constant)
-y_tip = max(malla.nodes(:,2));
-i_tip_nodes = find(abs(malla.nodes(:,2) - y_tip) < 1e-12);
-[~,ii] = min(abs(malla.nodes(i_tip_nodes,1) - x_sc_line));
-i_tip = i_tip_nodes(ii);
 
-% Selector for eta DOF at tip
+% Tip vertical acceleration at tip shear center
+
+% Tip index
+x_sc_line = span.x_sc(1); % shear center x at root
+y_tip = y(end);
+tip_nodes = find(abs(malla.nodes(:,2) - y_tip) < 1e-12);
+[~,ii] = min(abs(malla.nodes(tip_nodes,1) - x_sc_line));
+i_tip = tip_nodes(ii);
+
+% Acceleration measurement vector
 Ie = zeros(N_dof,1);
-Ie(3*(i_tip-1) + 1) = 1;                % eta DOF at node i_tip
-Ie_red = Phi.' * Ie;                     % map to modal coordinates
+Ie(3*(i_tip-1) + 1) = 1; % eta = 1 al tip node
+Ie_red = Phi.' * Ie;
 
-% --- Allocate outputs ---
-Phi_gg = zeros(length(f), length(U_g));  % gust PSD (as function of omega, for integration)
-Phi_aa = zeros(length(f), length(U_g));  % accel PSD
-Phi_ss = zeros(length(f), length(U_g));  % stress PSD
+% Allocate outputs
+Phi_gg = zeros(length(f), length(U_g));
+Phi_aa = zeros(length(f), length(U_g));
+Phi_ss = zeros(length(f), length(U_g));
+H_acc = zeros(length(f), length(U_g));
+H_sig = zeros(length(f), length(U_g));
 
-% Optional: store FRFs if you want
-H_acc = zeros(length(f), length(U_g));   % FRF accel / Wg
-H_sig = zeros(length(f), length(U_g));   % FRF sigma_max / Wg
-
-fprintf('\n=== GUST ANALYSIS (PSD / RMS) ===\n');
 for iU = 1:length(U_g)
     U_inf_i = U_g(iU);
-
     for jf = 1:length(f)
+        if f(jf) == 0, continue; end  % skip f=0 per evitar divs per 0
         omega = w(jf);
+        k = omega * c_root / (2 * U_inf_i);
 
-        % Reduced frequency
-        k = omega * c_root / (2*U_inf_i);
+        % AIC at this k unsteady (la del profe)
+        AICk = buildAIC(x_p, y_p, c_root, lambda, y0, b, M_inf, k);
 
-        % Build AIC at this k (unsteady)
-        % (reuse your exact AIC logic, but now inside loop)
-        AICk = buildAIC_wing(x_p, y_p, c_root, lambda, y0, b, M_inf, k);
-
-        % Aerodynamic "effective" matrix (same idea as professor code)
-        % Aeff_full = rho/2 * S * (AIC \ ( i*k*2/c * It + Ix ))
+        %Aeroelastic coupling matrices
         Aeff_full = rho_inf/2 * ( S * (AICk \ ( 1i*k*2/c_root * It + Ix )) );
 
-        % Gust vector (phase delay along x); Wg is scalar reference gust velocity amplitude
-        Ig = exp(1i*k*2/c_root * x_p(:,3));                 % N_panels x 1
-        Ag_full = -rho_inf/2 * ( S * (AICk \ Ig) );         % N_dof x 1 (input direction per unit Wg)
+        % Gust loads vector
+        Ig = exp(1i*k*2/c_root * x_p(:,3));
+        Ag_full = -rho_inf/2 * ( S * (AICk \ Ig) );
 
         % Reduce to modal coordinates
-        A_red  = Phi.' * Aeff_full * Phi;                  % N_modes x N_modes
-        Ag_red = Phi.' * Ag_full;                          % N_modes x 1
-
+        A_red = Phi.'* Aeff_full * Phi;
+        Ag_red = Phi.'* Ag_full;
+        
         % System FRF: modal response per unit gust velocity amplitude Wg
         % Q = (-w^2 M + i w C + K - U^2 A_red)^(-1) * Ag_red
         Den = (-omega^2)*M_red + 1i*omega*C_red + K_red - (U_inf_i^2)*A_red;
-        Q_perWg = Den \ Ag_red;                             % N_modes x 1
+        Q_perWg = Den \ Ag_red;
 
-        % ---- Output 1: tip vertical acceleration FRF ----
-        eta_tip_perWg = Ie_red.' * Q_perWg;                 % scalar (eta) per unit Wg
-        H_acc(jf,iU) = (-omega^2) * eta_tip_perWg;          % accel per unit Wg  [ (m/s^2)/(m/s) = 1/s ]
+        % tip vertical acceleration FRF
+        eta_tip_perWg = Ie_red.'* Q_perWg;
+        H_acc(jf,iU) = (-omega^2) * eta_tip_perWg;
 
-        % ---- Output 2: sigma_max FRF (computed numerically from deformation field) ----
-        % Reconstruct full DOFs (only modes kept): q_full = Phi * Q
-        q_full_perWg = Phi * Q_perWg;                       % N_dof x 1
+        % sigma_max FRF Reconstruct full DOFs: q_full = Phi * Q
+        q_full_perWg = Phi * Q_perWg;
+        sigma_max_perWg = sigmaMax_fromResponse(q_full_perWg, malla.nodes, span, material, x_sc_line);
+        H_sig(jf,iU) = sigma_max_perWg;
 
-        sigma_max_perWg = sigmaMax_fromResponse(q_full_perWg, malla.nodes, span, material);
-        H_sig(jf,iU) = sigma_max_perWg;                     % Pa per (m/s)
+        % Gust PSD in k
+        Phi_k = gustPSD_k(k, sigma_g, k0);
+        Phi_gg(jf,iU) = Phi_k * (c_root / (2 * U_inf_i));
 
-        % ---- Gust PSD (given in k) -> convert to omega-domain for integration ----
-        Phi_k = gustPSD_k(k, sigma_g, k0);                  % [(m/s)^2] per "unit k"
-        % Convert to omega-domain PSD for RMS integral in omega:
-        Phi_gg(jf,iU) = Phi_k * (c_root/(2*U_inf_i));       % [(m/s)^2] per (rad/s)
-
-        % ---- Response PSDs ----
-        Phi_aa(jf,iU) = abs(H_acc(jf,iU))^2 * Phi_gg(jf,iU); % [(m/s^2)^2] per (rad/s)
-        Phi_ss(jf,iU) = abs(H_sig(jf,iU))^2 * Phi_gg(jf,iU); % [Pa^2] per (rad/s)
+        % Response PSDs
+        Phi_aa(jf,iU) = abs(H_acc(jf,iU))^2 * Phi_gg(jf,iU);
+        Phi_ss(jf,iU) = abs(H_sig(jf,iU))^2 * Phi_gg(jf,iU); % diapo 199
     end
-
     fprintf(' Gust: %03i/%03i (U=%.1f m/s)\n', iU, length(U_g), U_inf_i);
 end
 
-% ---- RMS values (integrate one-sided PSD over omega) ----
-% sigma = sqrt( ∫ Phi(omega) d omega )
-g_RMS = sqrt(trapz(w, Phi_gg, 1));  % RMS gust velocity (should be close-ish to sigma_g depending on cutoff)
-a_RMS = sqrt(trapz(w, Phi_aa, 1));  % RMS tip acceleration
-s_RMS = sqrt(trapz(w, Phi_ss, 1));  % RMS sigma_max
+% RMS values
+g_RMS = sqrt(trapz(w, Phi_gg,1)); % RMS gust velocity
+a_RMS = sqrt(trapz(w, Phi_aa,1)); % RMS tip acceleration
+s_RMS = sqrt(trapz(w, Phi_ss,1)); % RMS sigma_max
 
-% ---- Plots required by statement ----
+% Acceleration PSD curve (picked a few speeds)
+U_plot = U_g(round(linspace(1, length(U_g), 4)));
+[~,idxU] = ismember(U_plot, U_g);
+figure; hold on; box on;
+for kU = idxU
+    plot(f, Phi_aa(:,kU), 'LineWidth', 1.5);
+end
+set(gca,'XScale','log','YScale','log');
+xlabel('f [Hz]'); ylabel('\Phi_{\eta} [(m/s^2)^2/(rad/s)]');
+title('Tip acceleration PSD (selected U_\infty)');
+legend(arrayfun(@(U) sprintf('U=%.0f m/s',U), U_plot, 'UniformOutput', false), 'Location','best');
 
-% 1) PSD curves (pick a few speeds)
-U_plot = [U_g(1), U_g(round(end/3)), U_g(round(2*end/3)), U_g(end)];
-[~,idxU] = ismember(U_p_
+% Stress PSD curve
+figure; hold on; box on;
+for kU = idxU
+    plot(f, Phi_ss(:,kU), 'LineWidth', 1.5);
+end
+set(gca,'XScale','log','YScale','log');
+xlabel('f [Hz]'); ylabel('\Phi_{\sigma\sigma} [Pa^2/(rad/s)]');
+title('Max stress PSD (selected U_\infty)');
+legend(arrayfun(@(U) sprintf('U=%.0f m/s',U), U_plot, 'UniformOutput', false), 'Location','best');
 
+% Acceleration RMS vs speed
+figure; hold on; box on;
+plot(U_g, a_RMS, 'LineWidth', 2);
+xlabel('U_\infty [m/s]'); ylabel('\eta_{RMS} [m/s^2]'); % Hauria de ser \ddot{\eta}_{RMS} [m/s^2] pero no sé posar ddot
+title('Tip acceleration RMS vs U_\infty');
 
+%Stress RMS vs speed
+figure; hold on; box on;
+plot(U_g, s_RMS, 'LineWidth', 2);
+xlabel('U_\infty [m/s]'); ylabel('\sigma_{max,RMS} [Pa]');
+title('Max stress RMS vs U_\infty');
 
-%%%%%%%%%%%%%%%%%%%%%
+%% --------------------------
+function sigma_max = sigmaMax_fromResponse(q_full, nodes, span, material, x_sc_line)
+    % Compute sigma_max over nodes using the project statement formula
+    E = material.YoungModulus;
+    nu = material.Poisson;
+    G = E / (2 * (1 + nu));
+    y = span.y(:);
+    c_y = span.c_y(:);
+    % Extract DOFs at nodes
+    N_nodes = size(nodes,1);
+    eta   = q_full(1:3:end);
+    zeta  = q_full(2:3:end);
+    theta = q_full(3:3:end);
+    % For each span station (y(j)), average zeta and theta across chord nodes
+    zeta_y  = zeros(length(y),1);
+    theta_y = zeros(length(y),1);
+    for j = 1:length(y)
+        idx = find(abs(nodes(:,2) - y(j)) < 1e-12);
+        zeta_y(j)  = mean(zeta(idx));
+        theta_y(j) = mean(theta(idx));
+    end
+    % Spanwise derivatives (central differences or forward/backward at ends)
+    dzeta_dy  = gradient(zeta_y, y);
+    dtheta_dy = gradient(theta_y, y);
+    % Evaluate sigma at each node
+    sigma_node = zeros(N_nodes,1);
+    for n = 1:N_nodes
+        % station index in y-grid
+        [~,j] = min(abs(y - nodes(n,2)));
+        % thickness model (consistent with your plate element)
+        h_local = 0.05 * c_y(j);  % or use your actual thickness distribution
+        % distance to shear center in x
+        r_sc = abs(nodes(n,1) - x_sc_line);
+        term_bend = (E * h_local / 2) * dzeta_dy(j);
+        term_tors = (sqrt(3) * G * r_sc) * dtheta_dy(j);
+        sigma_node(n) = sqrt( term_bend^2 + term_tors^2 );
+    end
+    sigma_max = max(sigma_node);
+end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+function Phi_k = gustPSD_k(k, sigma_g, k0)
+    % Piecewise PSD given by the project statement in reduced frequency k
+    % Output has units [(m/s)^2] per "unit k" (your subsequent dk/dw conversion handles omega-domain)
+    Phi_k = zeros(size(k));
+    mask_low = k < k0;
+    mask_high = ~mask_low;
+    
+    Phi_k(mask_low)  = sigma_g^2 * 10^(8/3);
+    Phi_k(mask_high) = sigma_g^2 * 10^(-8/3) * k(mask_high).^(-12/7);
+end
 
 
 
