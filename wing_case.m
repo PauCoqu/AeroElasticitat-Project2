@@ -1,5 +1,4 @@
 function metrics = wing_case(geometry, param, density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0, i_modes,alpha_deg)
-
 %% STEP 1: Section properties (del pefil) ('beam_properties')
 
 % Section properties
@@ -136,9 +135,11 @@ autov = diag(U_2inf);  %extra         % lambda(autov) = U^2
 tol = 1e-8 * max(1, max(abs(autov)));
 valid = abs(imag(autov)) < tol & real(autov) > 0;
 U_inf2 = sort(sqrt(real(autov(valid))));
-
-U_inf_ALEX = sort(diag(sqrt(U_2inf))) %CREC QUE SOLAPAVEM U_inf 
-Ud_allmodes = U_inf2(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
+U_inf_verif = sort(diag(sqrt(U_2inf)))
+if isempty(U_inf2)
+    disp('No divergence speed found');
+end
+Ud_allmodes = U_inf2(1) %DIVERGENCE SPEED, valor real
 
 
 % Compute divergence speed with REDUCED SYSTEM (i_modes)
@@ -158,7 +159,7 @@ U_inf3 = sort(sqrt(real(lambda2(valid))));
 
 %U_inf3 = sort(diag(sqrt(U_3inf)));
 
-Ud_reduced = U_inf3(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
+%Ud_reduced = U_inf3(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -189,7 +190,7 @@ A0_red = rho_inf/2*S_red*(AIC\Ix_red);
 A1_red = -rho_inf/2*S_red*(AIC\It_red);
 
 % Initialize velocity vector
-U_ = 5:5:1.6*Ud;
+U_ = 0.5:0.5:1.6*Ud;
 
 % Initialize variables
 p_ = nan(2*N_modes,length(U_));
@@ -241,11 +242,18 @@ for i = 1:length(U_)
     end
     end
     
+  
 %%%%%%%%%%%%%%%%%%%%%%
 %Check validity p method (k<<)
-[~, jcrit] = max(real(p_(:,i))); %el eigenvalue amb part real major es el critic per flutter
-omega = abs(imag(p_(jcrit,i)));   % rad/s %(pag 172) | imag(p) = w |
-k_validation(i) = omega * c_root / (2*U_(i));
+tol_w = 1e-6;                         
+osc = abs(imag(p_(:,i))) > tol_w;
+if any(osc)
+    [~, jj] = max(real(p_(osc,i)));  % most unstable oscillatory root
+    idx = find(osc);
+   jcrit = idx(jj);
+    omega = abs(imag(p_(jcrit,i)));    % rad/s
+    k_validation(i) = omega * c_root / (2*U_(i)); %reduced frequency
+end
 %%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -253,33 +261,27 @@ end
 
 %% PLOTS
 
-figure
-subplot(2,1,1)
+% --- Subplot real parts ---
+figure 
+subplot(2,1,1) 
 hold on; box on;
-plot(U_/Ud, real(p_).*c_root./(2*U_), 'LineWidth', 2);
-yline(0,'k--')
-xlabel("U_{\infty}/U_D");
-ylabel("p_R c / 2U");
-
+plot(U_/Ud, real(p_).*c_root./(2*U_), 'LineWidth', 2); yline(0,'k--')
+xlabel("U_{\infty}/U_D"); ylabel("p_R c / 2U");
 subplot(2,1,2)
 hold on; box on;
-plot(U_/Ud, imag(p_)/(2*pi), 'LineWidth', 2);
-yline(0,'k--')
-xlabel("U_{\infty}/U_D");
+plot(U_/Ud, imag(p_)/(2*pi), 'LineWidth', 2); yline(0,'k--')
+xlabel("U_{\infty}/U_D"); 
 ylabel("p_I / 2\pi");
-
-% FALTA AFEGIR LLEGENDA
-
-%disp('--- ON CREUA EL 0 ---');
-%disp(' U/Ud  | part real de p ');
-%disp([U_/Ud; max(real(p_),[],1)].')  % U/Ud vs max Re(p)
 
 % Validació de k (p method)
 figure; hold on; box on;
-    plot(U_, k_validation, 'LineWidth', 2);
-    yline(0.05,'k--'); yline(0.1,'k--');
-    xlabel('U_{\infty} [m/s]');
-    ylabel('k = \omega c/(2U)');
+plot(U_, k_validation, 'LineWidth', 2);
+yline(0.05,'k--'); 
+yline(0.1,'k--');
+xlabel('U_{\infty} [m/s]');
+ylabel('k = \omega c/(2U)');
+%xlim([90 120])   %<-- limit U range
+%ylim([0 10])   %<-- limit U range
 
 
 
@@ -408,157 +410,102 @@ plot(U_g, s_RMS, 'LineWidth', 2);
 xlabel('U_\infty [m/s]'); ylabel('\sigma_{max,RMS} [Pa]');
 title('Max stress RMS vs U_\infty');
 
-%% --------------------------
-function sigma_max = sigmaMax_fromResponse(q_full, nodes, span, material, x_sc_line)
-    % Compute sigma_max over nodes using the project statement formula
-    E = material.YoungModulus;
-    nu = material.Poisson;
-    G = E / (2 * (1 + nu));
-    y = span.y(:);
-    c_y = span.c_y(:);
-    % Extract DOFs at nodes
-    N_nodes = size(nodes,1);
-    eta   = q_full(1:3:end);
-    zeta  = q_full(2:3:end);
-    theta = q_full(3:3:end);
-    % For each span station (y(j)), average zeta and theta across chord nodes
-    zeta_y  = zeros(length(y),1);
-    theta_y = zeros(length(y),1);
-    for j = 1:length(y)
-        idx = find(abs(nodes(:,2) - y(j)) < 1e-12);
-        zeta_y(j)  = mean(zeta(idx));
-        theta_y(j) = mean(theta(idx));
-    end
-    % Spanwise derivatives (central differences or forward/backward at ends)
-    dzeta_dy  = gradient(zeta_y, y);
-    dtheta_dy = gradient(theta_y, y);
-    % Evaluate sigma at each node
-    sigma_node = zeros(N_nodes,1);
-    for n = 1:N_nodes
-        % station index in y-grid
-        [~,j] = min(abs(y - nodes(n,2)));
-        % thickness model (consistent with your plate element)
-        h_local = 0.05 * c_y(j);  % or use your actual thickness distribution
-        % distance to shear center in x
-        r_sc = abs(nodes(n,1) - x_sc_line);
-        term_bend = (E * h_local / 2) * dzeta_dy(j);
-        term_tors = (sqrt(3) * G * r_sc) * dtheta_dy(j);
-        sigma_node(n) = sqrt( term_bend^2 + term_tors^2 );
-    end
-    sigma_max = max(sigma_node);
-end
-
-function Phi_k = gustPSD_k(k, sigma_g, k0)
-    % Piecewise PSD given by the project statement in reduced frequency k
-    % Output has units [(m/s)^2] per "unit k" (your subsequent dk/dw conversion handles omega-domain)
-    Phi_k = zeros(size(k));
-    mask_low = k < k0;
-    mask_high = ~mask_low;
-    
-    Phi_k(mask_low)  = sigma_g^2 * 10^(8/3);
-    Phi_k(mask_high) = sigma_g^2 * 10^(-8/3) * k(mask_high).^(-12/7);
-end
-
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %PROJECTE 1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Now we can compute the pressure difference coefficients complex amplitudes
-C_p = -(AIC\Wref);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% analisi aerodinamic
 
-% Pressure difference distribution.
-% Com considerem un cas estàtic, el C_p actual ja és el C_p estàtic.
+%  Cp DLM (estatic)
+alpha = deg2rad(5);            % rad
+Wref  = alpha * ones(N_panels,1);
+C_p   = -(AIC\Wref);
+Cp_real = real(C_p);
 
-x_ = zeros(4, N_panels);   % 4 vèrtexs de cada panell
-y_ = zeros(4, N_panels);
-dy = b / Ny;
+x_ = zeros(4,N_panels);
+y_ = zeros(4,N_panels);
 
-%Per visualitzar els panells amb Cp
 for i = 1:Nx
     for j = 1:Ny
-        k = Ny*(i-1) + j;
-
-        % y-coordinates
-        y1 = (j-1)*dy;
-        y2 = j*dy;
-        yc = (y1 + y2)/2;
-
-        % local chord
-        c1 = c_root * (1 - (1-lambda)*(y1/b));
-        c2 = c_root * (1 - (1-lambda)*(y2/b));
-        cc = c_root * (1 - (1-lambda)*(yc/b));
-
-        % panel coordinates
-        x_(1,k) = (i-1) * c1/Nx;
-        y_(1,k) = y1;
-        x_(2,k) =  i*c1/Nx;
-        y_(2,k) = y1;
-        x_(3,k) = i*c2/Nx;
-        y_(3,k) = y2;
-        x_(4,k) = (i-1)*c2/Nx;
-        y_(4,k) = y2;
+        k  = Ny*(i-1) + j;
+        y1 = y(j);
+        y2 = y(j+1);
+        c1 = c_root * (1 - (1-lambda) * (y1 - y0)/b);
+        c2 = c_root * (1 - (1-lambda) * (y2 - y0)/b);
+        x_(1,k) = (i-1)*c1/Nx;  y_(1,k) = y1;
+        x_(2,k) =  i   *c1/Nx;  y_(2,k) = y1;
+        x_(3,k) =  i   *c2/Nx;  y_(3,k) = y2;
+        x_(4,k) = (i-1)*c2/Nx;  y_(4,k) = y2;
     end
 end
 
-% C_p físic per plotejar: part real
-Cp_real = real(C_p);          % N_panels x 1
+% --- Lift and CL ---
+q_inf = 0.5*rho_inf*U_inf^2;
 
-% Amplitud (per definir CLim de forma robusta)
-Cp_amp = abs(C_p);
-cpmax  = max(Cp_amp);
-
-% Definim la superfície de l'ala (z=0)
-%Zsurf = zeros(size(x_));
-%figure("Units","normalized","Position",[0,0,0.5,1]);
-%hold on; axis equal;
-
-% Patch gris de l'ala (superfície neutra)
-%p1 = patch(x_, y_, Zsurf,'FaceColor', 0.8*[1 1 1], 'EdgeColor', 'none');
-
-% C_p per a cada panell com a fila 1xN_panels
-Cp_plot = Cp_real.';   % transposat: 1 x N_panels
-
-% Patch acolorit amb Cp
-%p2 = patch(x_, y_, Zsurf,repmat(Cp_plot, 4, 1),'FaceColor', 'flat', 'EdgeColor', 'none');
-%cb = colorbar;
-%cb.Label.String = 'C_p';
-
-%xlabel('x');
-%ylabel('y');
-%zlabel('z');
-%title('Pressure difference distribution (static \alpha)');
-
-%clim([-1, 1]*cpmax);
-%view(12, 15);   % vista 3D; view(2) per planta
-%grid on;
-
-
-
-%%  STEP 6 - Calculations
-
-% Lift i CL (CAS ESTÀTIC)
-q_inf = 0.5 * rho_inf * U_inf^2; %p dinamica
-S_panel = zeros(N_panels,1); % Àrea de cada panell 
-for i = 1:Nx
-    for j = 1:Ny
-        k = Ny*(i-1) + j;
-        S_panel(k) = (c_loc(j)/ Nx) * dy; %area del panell
-    end
+S_panel = zeros(N_panels,1);
+for k = 1:N_panels
+    dy_loc = y_(4,k) - y_(1,k);
+    dx1 = x_(2,k) - x_(1,k);
+    dx2 = x_(3,k) - x_(4,k);
+    S_panel(k) = 0.5*(dx1+dx2) * dy_loc;     % area trapezoidal
 end
-L_panel = Cp_real.* q_inf.* S_panel;  % Lift de cada panell
-Lmat = reshape(L_panel, Ny, Nx);   % cada columna = mateixa x, cada fila = mateixa y
-L_span = sum(Lmat, 2);            % sumem al llarg de la corda (direcció x)
-L  = 2*sum(L_panel); %Lift DE TOT EL PLANEJADOR
-CL = L / (q_inf * S); 
+
+L_panel = Cp_real .* q_inf .* S_panel;
+L_semi  = sum(L_panel);                     % semiwings lift
+L_total = 2*L_semi;                         % total lift (two wings)
+ctip    = lambda*c_root;
+S_total = b*(c_root + ctip);                % total area (2 wings)
+CL      = L_total / (q_inf * S_total);
 
 fprintf('\n--- Resultats aerodinàmics ---\n');
-fprintf('Lift total  L  = %.3f N\n', L);
-fprintf('Coeficient CL  = %.4f\n', CL);
+fprintf('Lift semiala   = %.3f N\n', L_semi);
+fprintf('Lift total     = %.3f N\n', L_total);
+fprintf('CL             = %.4f\n', CL);
+fprintf('max|Cp|        = %.3f\n', max(abs(Cp_real)));
 
-%------------------------------------------
+
+%% COMPARACIÓ x_cp amb x_sc
+
+x_cent = mean(x_(1:4,:), 1).';
+L_sec    = zeros(Ny,1);
+M_LE_sec = zeros(Ny,1);
+y_mid    = zeros(Ny,1);
+c_mid    = zeros(Ny,1);
+
+for j = 1:Ny
+    idx = j:Ny:N_panels;
+
+    L_sec(j)    = sum(L_panel(idx));
+    M_LE_sec(j) = sum(L_panel(idx) .* x_cent(idx));
+
+    y_mid(j) = 0.5*( y_(1,idx(1)) + y_(4,idx(1)) );
+    c_mid(j) = c_root * (1 - (1-lambda) * (y_mid(j) - y0)/b);
+end
+
+% Aerodynamic center per seccio (quarter-chord)
+x_ac_sec = 0.25 * c_mid;
+
+% x_cp (x_cp = M_LE/L)
+x_cp_sec = M_LE_sec ./ L_sec;
+%comprovació (x_cp = xac - M_ac/L)
+M_ac_sec   = M_LE_sec - x_ac_sec .* L_sec;
+x_cp_check = x_ac_sec + M_ac_sec ./ L_sec;
+fprintf('max|x_cp - x_cp_check| = %.3e\n', max(abs(x_cp_sec - x_cp_check)));
+
+% x_sc
+x_sc_sec = span.x_sc(1:Ny);
+
+figure; hold on; box on;
+plot(y_mid, x_cp_sec, 'LineWidth', 2);
+plot(y_mid, x_sc_sec, 'LineWidth', 2);
+xlabel('y [m]'); ylabel('x [m]');
+legend('x_{cp}','x_{sc}','Location','best');
+title('Comparacio x_{cp} vs x_{sc} (metres, LE=0)');
+
+%% ALTRES PARAMETRES AERODINAMICS
+
+% -------------------------------
 % Massa total i Mass Ratio(mu)
 
 y_span = span.y; % span.y va de 0 a b/2
@@ -568,7 +515,7 @@ M_semi = trapz(y_span, m_span); % Massa semiala (integració numerica)
 M_tot = 2 * M_semi;    % Massa ala completa [kg]
 
 % Mass ratio mu (ENUNCIAT)
-mu = M_tot/(pi*rho_inf*c_root*S);
+mu = M_tot/(pi*rho_inf*c_root*Surf);
 
 fprintf('\n--- Massa ---\n');
 fprintf('Massa total ala     = %.3f kg\n', M_tot);
@@ -579,6 +526,7 @@ fprintf('Mass ratio mu       = %.4f\n', mu);
 
 fprintf('\n--- Lift-to-mass ratio ---\n');
 fprintf('CL / mu = %.4f\n', CL/mu);
+
 
 %------------------------------------------
 % Stress and Stress-to-mass Ratio
@@ -635,31 +583,9 @@ fprintf('C_sigma/mu       = %.4f\n', Csigma_over_mu);
 % -----------------------
 %Guardem els resultats del cas
 
-metrics.y_panel = y_mid;
-metrics.b = b;
-metrics.lambda = lambda;
-metrics.Nx = Nx;
-metrics.Ny = Ny;
-metrics.S = S;
-metrics.AR = AR;
-metrics.Cp = Cp_plot;
-metrics.f1 = f1;
-metrics.L = L;
-metrics.L_span = L_span;
-metrics.CL = CL;
-metrics.mass = M_tot;
-metrics.mu = mu;
 metrics.CL_over_mu = CL/mu;
 metrics.sigma_max = sigma_max;
 metrics.C_sigma = C_sigma;
 metrics.Csigma_over_mu = Csigma_over_mu;
-
-metrics.span     = span;
-metrics.modes    = modes;
-metrics.c_root   = c_root;
-metrics.x_panel  = x_panel;
-metrics.y_panel  = y_panel;
-metrics.material = material;
-
 
 end

@@ -39,6 +39,6 @@ Nx = 10; %Numero d'elements
 Ny = 10;
 
 %Modal reduction
-i_modes = [1:20];
+i_modes = [1:8];
 
 metrics = wing_case(geometry, param, density,youngModulus,poissonRatio,b,lambda,Nx, Ny,U_inf,y0,i_modes,alpha_deg);

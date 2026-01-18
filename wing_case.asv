@@ -1,5 +1,4 @@
-function metrics = wing_case(geometry, param, density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0, i_modes)
-
+function metrics = wing_case(geometry, param, density,youngModulus,poissonRatio, b, lambda, Nx, Ny,U_inf,y0, i_modes,alpha_deg)
 %% STEP 1: Section properties (del pefil) ('beam_properties')
 
 % Section properties
@@ -80,7 +79,7 @@ rho_inf = 1.25;
 %a_inf = 343;
 %eta = 0.1*(c/2);  %Amplitud del moviment vertical (CAS ESTATIC)
 %freq = 1; % Hz (CAS ESTATIC)
-%alpha = alpha_deg*pi/180;  %rad
+alpha = alpha_deg*pi/180;  %rad
 
 % Reduced frequency -> Frequencia d'oscilació (k>0 -> flutter i altres, k=0 -> CAS ESTÀTIC)
 k = 0; %2*pi*freq*c/(2*U_inf)
@@ -132,10 +131,10 @@ A0_free = A0(I_free,I_free);      % fins aquí hauria d'estar tot bé
 % Compute divergence speed with ALL MODES
 [X_div,U_2inf] = eigs(sparse(K(I_free,I_free)), sparse(A0(I_free,I_free)), 10, 'smallestabs');
 
-lambda = diag(U_2inf);  %extra         % lambda = U^2
-tol = 1e-8 * max(1, max(abs(lambda)));
-valid = abs(imag(lambda)) < tol & real(lambda) > 0;
-U_inf2 = sort(sqrt(real(lambda(valid))));
+autov = diag(U_2inf);  %extra         % lambda(autov) = U^2
+tol = 1e-8 * max(1, max(abs(autov)));
+valid = abs(imag(autov)) < tol & real(autov) > 0;
+U_inf2 = sort(sqrt(real(autov(valid))));
 
 U_inf_ALEX = sort(diag(sqrt(U_2inf))) %CREC QUE SOLAPAVEM U_inf 
 Ud_allmodes = U_inf2(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
@@ -158,7 +157,7 @@ U_inf3 = sort(sqrt(real(lambda2(valid))));
 
 %U_inf3 = sort(diag(sqrt(U_3inf)));
 
-Ud_reduced = U_inf3(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
+%Ud_reduced = U_inf3(1) %DIVERGENCE SPEED, assumint que el 1r eigenvalue es real
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -189,7 +188,7 @@ A0_red = rho_inf/2*S_red*(AIC\Ix_red);
 A1_red = -rho_inf/2*S_red*(AIC\It_red);
 
 % Initialize velocity vector
-U_ = 5:5:1.6*Ud;
+U_ = 0.5:0.5:1.6*Ud;
 
 % Initialize variables
 p_ = nan(2*N_modes,length(U_));
@@ -241,11 +240,20 @@ for i = 1:length(U_)
     end
     end
     
+  
 %%%%%%%%%%%%%%%%%%%%%%
 %Check validity p method (k<<)
-[~, jcrit] = max(real(p_(:,i))); %el eigenvalue amb part real major es el critic per flutter
-omega = abs(imag(p_(jcrit,i)));   % rad/s %(pag 172) | imag(p) = w |
-k_validation(i) = omega * c_root / (2*U_(i));
+%tol_w = 1e-6;                         
+%osc = abs(imag(p_(:,i))) > tol_w;
+%if any(osc)
+%    [~, jj] = max(real(p_(osc,i)));  % most unstable oscillatory root
+%    idx = find(osc);
+%    jcrit = idx(jj);
+%    omega = abs(imag(p_(jcrit,i)));    % rad/s
+%    k_validation(i) = omega * c_root / (2*U_(i)); %reduced frequency
+%end
+
+[~, jcrit] = max(real(p_(:,i)));%el eigenvalue amb part real major es el critic per flutter omega = abs(imag(p_(jcrit,i))); % rad/s %(pag 172) | imag(p) = w | k_validation(i) = omega * c_root / (2*U_(i));
 %%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -253,33 +261,27 @@ end
 
 %% PLOTS
 
-figure
-subplot(2,1,1)
+% --- Subplot real parts ---
+figure 
+subplot(2,1,1) 
 hold on; box on;
-plot(U_/Ud, real(p_).*c_root./(2*U_), 'LineWidth', 2);
-yline(0,'k--')
-xlabel("U_{\infty}/U_D");
-ylabel("p_R c / 2U");
-
+plot(U_/Ud, real(p_).*c_root./(2*U_), 'LineWidth', 2); yline(0,'k--')
+xlabel("U_{\infty}/U_D"); ylabel("p_R c / 2U");
 subplot(2,1,2)
 hold on; box on;
-plot(U_/Ud, imag(p_)/(2*pi), 'LineWidth', 2);
-yline(0,'k--')
-xlabel("U_{\infty}/U_D");
+plot(U_/Ud, imag(p_)/(2*pi), 'LineWidth', 2); yline(0,'k--')
+xlabel("U_{\infty}/U_D"); 
 ylabel("p_I / 2\pi");
-
-% FALTA AFEGIR LLEGENDA
-
-%disp('--- ON CREUA EL 0 ---');
-%disp(' U/Ud  | part real de p ');
-%disp([U_/Ud; max(real(p_),[],1)].')  % U/Ud vs max Re(p)
 
 % Validació de k (p method)
 figure; hold on; box on;
-    plot(U_, k_validation, 'LineWidth', 2);
-    yline(0.05,'k--'); yline(0.1,'k--');
-    xlabel('U_{\infty} [m/s]');
-    ylabel('k = \omega c/(2U)');
+plot(U_, k_validation, 'LineWidth', 2);
+yline(0.05,'k--'); 
+yline(0.1,'k--');
+xlabel('U_{\infty} [m/s]');
+ylabel('k = \omega c/(2U)');
+xlim([90 120])   %<-- limit U range
+%ylim([0 10])   %<-- limit U range
 
 
 

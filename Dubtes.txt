@@ -203,3 +203,25 @@ sgtitle('Cross-section properties along the span');
 
 end
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%
+%Check validity p method (k<<)
+%tol_w = 1e-6;                         
+%osc = abs(imag(p_(:,i))) > tol_w;
+%if any(osc)
+%    [~, jj] = max(real(p_(osc,i)));  % most unstable oscillatory root
+%    idx = find(osc);
+%    jcrit = idx(jj);
+%    omega = abs(imag(p_(jcrit,i)));    % rad/s
+%    k_validation(i) = omega * c_root / (2*U_(i)); %reduced frequency
+%end
+
+[~, jcrit] = max(real(p_(:,i)));%el eigenvalue amb part real major es el critic per flutter 
+omega = abs(imag(p_(jcrit,i))); % rad/s %(pag 172) | imag(p) = w | 
+k_validation(i) = omega * c_root / (2*U_(i));
+%%%%%%%%%%%%%%%%%%%%%%
+
+
